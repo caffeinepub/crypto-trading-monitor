@@ -1,0 +1,172 @@
+{
+  "kind": "build_request",
+  "title": "Add AI market analysis and risk management tools",
+  "projectName": "Crypto Position Monitor",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-17",
+      "text": "Implement market sentiment analysis that aggregates sentiment indicators from multiple sources and displays a sentiment score (bullish/bearish/neutral) with visual gauge or indicator for each traded asset. Include sentiment strength percentage and brief explanation of contributing factors.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Vamos para inteligência artificial",
+          "Análise de sentimento de mercado baseada em notícias"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Sentiment score displayed as bullish, bearish, or neutral with visual indicator",
+        "Sentiment strength shown as percentage",
+        "Brief explanation of factors contributing to sentiment provided",
+        "Sentiment updates automatically at regular intervals"
+      ]
+    },
+    {
+      "id": "REQ-18",
+      "text": "Create trend prediction feature using technical indicators and pattern recognition that analyzes recent price action, volume, and momentum to predict short-term and medium-term trend direction. Display prediction confidence level, expected price movement direction (up/down/sideways), and time horizon for each prediction.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Predições de tendência usando machine learning"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Trend prediction shows direction (up, down, sideways) with confidence percentage",
+        "Short-term (1-24 hours) and medium-term (1-7 days) predictions provided",
+        "Visual representation of predicted trend with time horizon",
+        "Prediction accuracy tracked and displayed over time"
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "text": "Implement automatic TP/SL adjustment suggestions that continuously monitor market conditions (volatility changes, support/resistance breaks, momentum shifts) and recommend real-time adjustments to existing position targets. Display adjustment recommendations as actionable cards showing current vs. suggested TP/SL levels with reasoning for each change.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Sugestões automáticas de ajuste de TP/SL em tempo real"
+        ]
+      },
+      "acceptanceCriteria": [
+        "System monitors positions and market conditions continuously",
+        "Adjustment suggestions appear when market conditions warrant changes",
+        "Each suggestion shows current level, proposed level, and reasoning",
+        "Users can accept or dismiss suggestions with one click",
+        "Adjustment history tracked for each position"
+      ]
+    },
+    {
+      "id": "REQ-20",
+      "text": "Create position size calculator that takes user's total capital, risk percentage per trade (1-10%), and stop-loss distance to calculate optimal position size and investment amount. Display recommended position size in USD, number of contracts, actual risk amount in USD, and risk-reward ratio. Include visual slider for risk percentage adjustment.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Calculadora de tamanho de posição baseada em % de risco",
+          "gestão de risco"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Calculator accepts total capital amount and risk percentage (1-10%)",
+        "Calculates and displays optimal position size based on stop-loss distance",
+        "Shows risk amount in USD and expected reward amount",
+        "Visual risk slider allows easy adjustment of risk percentage",
+        "Recommended values can be applied directly to position entry form"
+      ]
+    },
+    {
+      "id": "REQ-21",
+      "text": "Implement total portfolio exposure visualization that aggregates all active positions to show total capital at risk, total potential profit, portfolio-wide leverage exposure, and correlation risk between positions. Display as dashboard widget with visual charts showing exposure breakdown by asset, position type (long/short balance), and risk concentration.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Visualização de exposição total do portfólio",
+          "gestão de risco"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Dashboard shows total capital deployed across all positions",
+        "Total leverage exposure calculated and displayed prominently",
+        "Visual breakdown of exposure by asset with pie/bar chart",
+        "Long vs short position balance shown with visual indicator",
+        "Warning alerts when total exposure exceeds safe thresholds (>50% of capital)",
+        "Correlation risk highlighted when multiple positions are on correlated assets"
+      ]
+    },
+    {
+      "id": "REQ-22",
+      "text": "Create scenario simulator tool that allows users to input hypothetical price movements (as percentage changes) for their positions and see projected P&L outcomes. Display results showing total portfolio impact, individual position outcomes, margin requirements at simulated prices, and potential liquidation warnings. Include quick scenario presets like 'Market crash -20%', 'Bull run +30%', 'High volatility ±15%'.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Simulador de cenários (\"e se o preço cair X%?\")",
+          "gestão de risco"
+        ]
+      },
+      "acceptanceCriteria": [
+        "User can input custom percentage change for price simulation",
+        "Simulator calculates P&L for all positions under simulated scenario",
+        "Total portfolio impact shown in USD and percentage",
+        "Individual position outcomes displayed with color coding",
+        "Liquidation warnings shown if any position would be liquidated",
+        "Quick scenario buttons available for common market moves",
+        "Results update instantly as user adjusts simulation parameters"
+      ]
+    },
+    {
+      "id": "REQ-23",
+      "text": "Design and integrate AI and risk management features into the existing golden-themed UI using consistent styling with Tailwind CSS. Create new dashboard sections or tabs for AI insights (sentiment, predictions, adjustment suggestions) and risk management tools (calculator, exposure, simulator). Ensure all new components follow the established visual hierarchy with cards, appropriate spacing, and responsive layouts that work on mobile and desktop.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All new features integrated into existing dashboard layout",
+        "Golden color theme applied consistently to all new components",
+        "AI insights section clearly separated from position monitoring",
+        "Risk management tools accessible via dedicated dashboard area",
+        "Responsive design works smoothly on mobile and desktop",
+        "Visual hierarchy maintained with proper card layouts and spacing",
+        "No layout shifts or flickering during real-time updates"
+      ]
+    }
+  ],
+  "constraints": [
+    "All AI analysis and calculations must be performed in the frontend using available market data from Binance API",
+    "No external AI service APIs (OpenAI, Anthropic, etc.) can be integrated per platform limitations",
+    "Sentiment analysis must use technical indicators and price action patterns, not external news APIs",
+    "All risk management calculations must work with existing localStorage-based position data",
+    "Maintain existing golden color theme and PWA functionality",
+    "Do not modify read-only paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui"
+  ],
+  "nonGoals": [
+    "Integration with external AI services or APIs",
+    "Backend implementation in Motoko (all features are frontend-only)",
+    "Real-time news scraping or social media API integration",
+    "Actual automated trading execution or order placement",
+    "Machine learning model training infrastructure",
+    "WebSocket connections for real-time data streaming"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

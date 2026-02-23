@@ -1,0 +1,154 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-implement-market-sentiment-analysis-that-aggregates-sentiment-indicators-from-multiple-sources-and-displays-a-sentiment-score-bullish-bearish-neutral-with-visual-gauge-or-indicator-for-each-traded-asset-include-sentiment-strength-percentage-and-brief-explanation-of-contributing-factors",
+      "featureTitle": "Implement market sentiment analysis that aggregates sentiment indicators from multiple sources and displays a sentiment score (bullish/bearish/neutral) with visual gauge or indicator for each traded asset. Include sentiment strength percentage and brief explanation of contributing factors.",
+      "files": [
+        "frontend/src/components/PositionCard.tsx",
+        "frontend/src/components/SentimentGauge.tsx",
+        "frontend/src/hooks/useSentimentAnalysis.ts",
+        "frontend/src/utils/sentimentAnalysis.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-17"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-trend-prediction-feature-using-technical-indicators-and-pattern-recognition-that-analyzes-recent-price-action-volume-and-momentum-to-predict-short-term-and-medium-term-trend-direction-display-prediction-confidence-level-expected-price-movement-direction-up-down-sideways-and-time-horizon-for-each-prediction",
+      "featureTitle": "Create trend prediction feature using technical indicators and pattern recognition that analyzes recent price action, volume, and momentum to predict short-term and medium-term trend direction. Display prediction confidence level, expected price movement direction (up/down/sideways), and time horizon for each prediction.",
+      "files": [
+        "frontend/src/components/PositionCard.tsx",
+        "frontend/src/components/TrendPredictionCard.tsx",
+        "frontend/src/hooks/useTrendPrediction.ts",
+        "frontend/src/types/prediction.ts",
+        "frontend/src/utils/trendPrediction.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-18"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-automatic-tp-sl-adjustment-suggestions-that-continuously-monitor-market-conditions-volatility-changes-support-resistance-breaks-momentum-shifts-and-recommend-real-time-adjustments-to-existing-position-targets-display-adjustment-recommendations-as-actionable-cards-showing-current-vs-suggested-tp-sl-levels-with-reasoning-for-each-change",
+      "featureTitle": "Implement automatic TP/SL adjustment suggestions that continuously monitor market conditions (volatility changes, support/resistance breaks, momentum shifts) and recommend real-time adjustments to existing position targets. Display adjustment recommendations as actionable cards showing current vs. suggested TP/SL levels with reasoning for each change.",
+      "files": [
+        "frontend/src/components/AdjustmentSuggestionCard.tsx",
+        "frontend/src/components/PositionCard.tsx",
+        "frontend/src/hooks/useAdjustmentSuggestions.ts",
+        "frontend/src/types/adjustment.ts",
+        "frontend/src/utils/adjustmentSuggestions.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-19"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-position-size-calculator-that-takes-user-s-total-capital-risk-percentage-per-trade-1-10-and-stop-loss-distance-to-calculate-optimal-position-size-and-investment-amount-display-recommended-position-size-in-usd-number-of-contracts-actual-risk-amount-in-usd-and-risk-reward-ratio-include-visual-slider-for-risk-percentage-adjustment",
+      "featureTitle": "Create position size calculator that takes user's total capital, risk percentage per trade (1-10%), and stop-loss distance to calculate optimal position size and investment amount. Display recommended position size in USD, number of contracts, actual risk amount in USD, and risk-reward ratio. Include visual slider for risk percentage adjustment.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/PositionSizeCalculator.tsx",
+        "frontend/src/types/calculator.ts",
+        "frontend/src/utils/positionSizeCalculator.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-20"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-total-portfolio-exposure-visualization-that-aggregates-all-active-positions-to-show-total-capital-at-risk-total-potential-profit-portfolio-wide-leverage-exposure-and-correlation-risk-between-positions-display-as-dashboard-widget-with-visual-charts-showing-exposure-breakdown-by-asset-position-type-long-short-balance-and-risk-concentration",
+      "featureTitle": "Implement total portfolio exposure visualization that aggregates all active positions to show total capital at risk, total potential profit, portfolio-wide leverage exposure, and correlation risk between positions. Display as dashboard widget with visual charts showing exposure breakdown by asset, position type (long/short balance), and risk concentration.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/ExposureChart.tsx",
+        "frontend/src/components/PortfolioExposureDashboard.tsx",
+        "frontend/src/hooks/usePortfolioExposure.ts",
+        "frontend/src/types/exposure.ts",
+        "frontend/src/utils/exposureCalculations.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-21"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-scenario-simulator-tool-that-allows-users-to-input-hypothetical-price-movements-as-percentage-changes-for-their-positions-and-see-projected-p-l-outcomes-display-results-showing-total-portfolio-impact-individual-position-outcomes-margin-requirements-at-simulated-prices-and-potential-liquidation-warnings-include-quick-scenario-presets-like-market-crash-20-bull-run-30-high-volatility-15",
+      "featureTitle": "Create scenario simulator tool that allows users to input hypothetical price movements (as percentage changes) for their positions and see projected P&L outcomes. Display results showing total portfolio impact, individual position outcomes, margin requirements at simulated prices, and potential liquidation warnings. Include quick scenario presets like 'Market crash -20%', 'Bull run +30%', 'High volatility ±15%'.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/ScenarioSimulator.tsx",
+        "frontend/src/types/scenario.ts",
+        "frontend/src/utils/scenarioSimulator.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-22"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-design-and-integrate-ai-and-risk-management-features-into-the-existing-golden-themed-ui-using-consistent-styling-with-tailwind-css-create-new-dashboard-sections-or-tabs-for-ai-insights-sentiment-predictions-adjustment-suggestions-and-risk-management-tools-calculator-exposure-simulator-ensure-all-new-components-follow-the-established-visual-hierarchy-with-cards-appropriate-spacing-and-responsive-layouts-that-work-on-mobile-and-desktop",
+      "featureTitle": "Design and integrate AI and risk management features into the existing golden-themed UI using consistent styling with Tailwind CSS. Create new dashboard sections or tabs for AI insights (sentiment, predictions, adjustment suggestions) and risk management tools (calculator, exposure, simulator). Ensure all new components follow the established visual hierarchy with cards, appropriate spacing, and responsive layouts that work on mobile and desktop.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/index.css"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-23"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

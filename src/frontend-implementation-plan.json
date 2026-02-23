@@ -1,0 +1,266 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Add AI market analysis and risk management tools to Crypto Position Monitor",
+  "requirements": [
+    {
+      "id": "REQ-17",
+      "summary": "Implement market sentiment analysis with visual gauge showing bullish/bearish/neutral sentiment score, strength percentage, and contributing factors for each traded asset",
+      "acceptanceCriteria": [
+        "Sentiment score displayed as bullish, bearish, or neutral with visual indicator",
+        "Sentiment strength shown as percentage",
+        "Brief explanation of factors contributing to sentiment provided",
+        "Sentiment updates automatically at regular intervals"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/sentimentAnalysis.ts",
+          "operation": "create",
+          "description": "Create sentiment analysis utility that analyzes technical indicators (RSI, MACD, price momentum, volume trends) from Binance klines data to calculate sentiment score (bullish/bearish/neutral), strength percentage (0-100), and generate explanation of contributing factors. Use pattern recognition on recent price action to determine market sentiment without external APIs."
+        },
+        {
+          "path": "frontend/src/hooks/useSentimentAnalysis.ts",
+          "operation": "create",
+          "description": "Create React Query hook that fetches klines data for a symbol, runs sentiment analysis calculations, and returns sentiment score, strength, and factors. Configure 30-second refetch interval for automatic updates and 1-minute stale time for caching."
+        },
+        {
+          "path": "frontend/src/components/SentimentGauge.tsx",
+          "operation": "create",
+          "description": "Create component displaying sentiment as visual gauge using golden-themed circular progress indicator with color coding (green for bullish, red for bearish, gray for neutral). Show sentiment label, strength percentage prominently, and list of contributing factors below gauge. Use Tailwind CSS with existing color variables for consistent styling."
+        },
+        {
+          "path": "frontend/src/components/PositionCard.tsx",
+          "operation": "modify",
+          "description": "Integrate SentimentGauge component into PositionCard to display sentiment analysis for the position's symbol. Add sentiment section below position details and above take-profit/stop-loss sections. Pass symbol prop to SentimentGauge component."
+        }
+      ]
+    },
+    {
+      "id": "REQ-18",
+      "summary": "Create trend prediction feature displaying short-term and medium-term trend direction with confidence levels using technical indicators and pattern recognition",
+      "acceptanceCriteria": [
+        "Trend prediction shows direction (up, down, sideways) with confidence percentage",
+        "Short-term (1-24 hours) and medium-term (1-7 days) predictions provided",
+        "Visual representation of predicted trend with time horizon",
+        "Prediction accuracy tracked and displayed over time"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/trendPrediction.ts",
+          "operation": "create",
+          "description": "Create trend prediction utility analyzing recent price action, volume patterns, momentum indicators (RSI, MACD), and candlestick patterns from klines data. Calculate short-term (1-24h using 1h/4h candles) and medium-term (1-7d using 4h/1d candles) predictions with direction (up/down/sideways) and confidence percentage (0-100). Include pattern recognition for trend continuations and reversals."
+        },
+        {
+          "path": "frontend/src/hooks/useTrendPrediction.ts",
+          "operation": "create",
+          "description": "Create React Query hook fetching multi-timeframe klines data and running trend prediction calculations for a symbol. Return short-term and medium-term predictions with direction, confidence, and time horizon. Configure 5-minute refetch interval and cache predictions with symbol as query key."
+        },
+        {
+          "path": "frontend/src/components/TrendPredictionCard.tsx",
+          "operation": "create",
+          "description": "Create component displaying trend predictions with visual arrows (up/down/sideways) color-coded using golden theme (green up, red down, gray sideways). Show two prediction sections: short-term and medium-term, each displaying direction icon, confidence percentage, and time horizon label. Use card layout with proper spacing and responsive design."
+        },
+        {
+          "path": "frontend/src/types/prediction.ts",
+          "operation": "create",
+          "description": "Define TypeScript types for trend predictions including TrendDirection ('up' | 'down' | 'sideways'), TimeHorizon ('short-term' | 'medium-term'), TrendPrediction interface with direction, confidence, timeHorizon, and timestamp fields, and PredictionHistory for tracking accuracy over time."
+        },
+        {
+          "path": "frontend/src/components/PositionCard.tsx",
+          "operation": "modify",
+          "description": "Integrate TrendPredictionCard component into PositionCard displaying predictions for the position's symbol. Add prediction section between sentiment gauge and take-profit sections. Pass symbol prop to TrendPredictionCard."
+        }
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "summary": "Implement automatic TP/SL adjustment suggestions monitoring market conditions and displaying actionable recommendation cards with current vs suggested levels and reasoning",
+      "acceptanceCriteria": [
+        "System monitors positions and market conditions continuously",
+        "Adjustment suggestions appear when market conditions warrant changes",
+        "Each suggestion shows current level, proposed level, and reasoning",
+        "Users can accept or dismiss suggestions with one click",
+        "Adjustment history tracked for each position"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/adjustmentSuggestions.ts",
+          "operation": "create",
+          "description": "Create utility analyzing current market conditions (volatility changes from ATR, support/resistance breaks, momentum shifts from RSI/MACD) and comparing against existing position TP/SL levels. Generate adjustment suggestions when conditions warrant changes, returning proposed new levels with reasoning explaining volatility increase/decrease, level breaks, or momentum changes."
+        },
+        {
+          "path": "frontend/src/hooks/useAdjustmentSuggestions.ts",
+          "operation": "create",
+          "description": "Create React Query hook that continuously monitors positions using real-time price data and generates adjustment suggestions. Fetch klines data for active positions, run adjustment analysis, and return suggestions array. Configure 30-second refetch interval for continuous monitoring and maintain suggestion state per position ID."
+        },
+        {
+          "path": "frontend/src/components/AdjustmentSuggestionCard.tsx",
+          "operation": "create",
+          "description": "Create actionable card component displaying adjustment suggestion with current level, proposed level (with visual comparison arrows), reasoning text, and action buttons (Accept/Dismiss). Style with golden theme using alert/warning colors for visibility. Include loading state during acceptance and success feedback after applying adjustment."
+        },
+        {
+          "path": "frontend/src/types/adjustment.ts",
+          "operation": "create",
+          "description": "Define TypeScript types for adjustment suggestions including AdjustmentType ('take-profit' | 'stop-loss'), AdjustmentSuggestion interface with positionId, type, currentLevel, proposedLevel, reasoning, confidence, and timestamp, and AdjustmentHistory for tracking accepted/dismissed suggestions."
+        },
+        {
+          "path": "frontend/src/hooks/usePositionStorage.ts",
+          "operation": "modify",
+          "description": "Add adjustmentHistory array to position data structure in localStorage. Create updatePositionLevels function that accepts positionId and new TP/SL values, updates the position, and records adjustment in history with timestamp and reasoning. Export function for use by AdjustmentSuggestionCard accept action."
+        },
+        {
+          "path": "frontend/src/components/PositionCard.tsx",
+          "operation": "modify",
+          "description": "Integrate AdjustmentSuggestionCard component showing active suggestions for the position. Use useAdjustmentSuggestions hook to fetch suggestions filtered by position ID. Display suggestion cards above take-profit section when suggestions exist. Pass position data and update handlers to suggestion cards."
+        }
+      ]
+    },
+    {
+      "id": "REQ-20",
+      "summary": "Create position size calculator with capital input, risk percentage slider, and stop-loss distance to display optimal position size, risk amount, and risk-reward ratio",
+      "acceptanceCriteria": [
+        "Calculator accepts total capital amount and risk percentage (1-10%)",
+        "Calculates and displays optimal position size based on stop-loss distance",
+        "Shows risk amount in USD and expected reward amount",
+        "Visual risk slider allows easy adjustment of risk percentage",
+        "Recommended values can be applied directly to position entry form"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/positionSizeCalculator.ts",
+          "operation": "create",
+          "description": "Create utility calculating optimal position size based on total capital, risk percentage (1-10%), stop-loss distance, and leverage. Return position size in USD, number of contracts, actual risk amount in USD, potential reward amount, and risk-reward ratio. Use formula: position size = (capital × risk%) / (stop-loss distance × leverage)."
+        },
+        {
+          "path": "frontend/src/components/PositionSizeCalculator.tsx",
+          "operation": "create",
+          "description": "Create calculator component with input fields for total capital and stop-loss price, visual slider for risk percentage (1-10% with step 0.5), and live calculation display showing position size in USD, contracts, risk amount, reward amount, and risk-reward ratio. Use golden-themed styling with cards and proper spacing. Include Apply button that fills values into position entry form."
+        },
+        {
+          "path": "frontend/src/types/calculator.ts",
+          "operation": "create",
+          "description": "Define TypeScript types for position size calculator including PositionSizeInputs with capital, riskPercentage, stopLossPrice, entryPrice, and leverage fields, and PositionSizeResult with positionSize, contracts, riskAmount, rewardAmount, and riskRewardRatio fields."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add PositionSizeCalculator component to the sidebar section above PositionEntryForm. Create state management for calculator-to-form data flow using React context or prop drilling. When user clicks Apply in calculator, populate entry form fields with calculated values (investment amount, stop-loss levels). Maintain existing layout and golden-themed styling."
+        }
+      ]
+    },
+    {
+      "id": "REQ-21",
+      "summary": "Implement portfolio exposure dashboard showing total capital at risk, potential profit, leverage exposure, and correlation risk with visual breakdown by asset and position type",
+      "acceptanceCriteria": [
+        "Dashboard shows total capital deployed across all positions",
+        "Total leverage exposure calculated and displayed prominently",
+        "Visual breakdown of exposure by asset with pie/bar chart",
+        "Long vs short position balance shown with visual indicator",
+        "Warning alerts when total exposure exceeds safe thresholds (>50% of capital)",
+        "Correlation risk highlighted when multiple positions are on correlated assets"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/exposureCalculations.ts",
+          "operation": "create",
+          "description": "Create utility aggregating all positions to calculate total capital deployed, total potential profit/loss, weighted average leverage, long/short balance, exposure by asset, and correlation risk between positions. Detect correlated assets (BTC/ETH pairs, stablecoins) and calculate concentration risk. Return aggregated exposure data with warning flags when exposure exceeds 50% threshold."
+        },
+        {
+          "path": "frontend/src/hooks/usePortfolioExposure.ts",
+          "operation": "create",
+          "description": "Create React hook consuming positions from usePositionMonitoring and real-time prices to calculate portfolio-wide exposure metrics. Run exposure calculations on position array and return total capital, leverage exposure, asset breakdown, long/short balance, and risk warnings. Update calculations when positions or prices change."
+        },
+        {
+          "path": "frontend/src/components/ExposureChart.tsx",
+          "operation": "create",
+          "description": "Create component rendering visual charts for exposure breakdown using HTML5 canvas or SVG. Display pie chart for asset allocation, horizontal bar chart for long/short balance, and leverage exposure gauge. Use golden color scheme with chart colors from Tailwind config. Make responsive for mobile and desktop with proper labels and percentages."
+        },
+        {
+          "path": "frontend/src/components/PortfolioExposureDashboard.tsx",
+          "operation": "create",
+          "description": "Create dashboard widget displaying portfolio-wide exposure metrics in card layout. Show total capital deployed, total leverage exposure (with prominent display), potential P&L range, and warning alerts for high exposure (>50%). Integrate ExposureChart component for visual breakdown. Include correlation risk section listing correlated positions. Use golden-themed cards with proper spacing and responsive grid layout."
+        },
+        {
+          "path": "frontend/src/types/exposure.ts",
+          "operation": "create",
+          "description": "Define TypeScript types for portfolio exposure including ExposureByAsset with symbol and percentage, LongShortBalance with counts and capital amounts, CorrelationRisk with correlated position pairs, and PortfolioExposure interface aggregating all exposure metrics with warning flags."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add PortfolioExposureDashboard component as new dashboard section in the main content area below the header and above PositionDashboard. Use grid layout to position exposure widget prominently. Ensure responsive stacking on mobile devices and maintain existing golden theme styling."
+        }
+      ]
+    },
+    {
+      "id": "REQ-22",
+      "summary": "Create scenario simulator allowing users to input hypothetical price movements and see projected P&L outcomes with liquidation warnings and quick preset scenarios",
+      "acceptanceCriteria": [
+        "User can input custom percentage change for price simulation",
+        "Simulator calculates P&L for all positions under simulated scenario",
+        "Total portfolio impact shown in USD and percentage",
+        "Individual position outcomes displayed with color coding",
+        "Liquidation warnings shown if any position would be liquidated",
+        "Quick scenario buttons available for common market moves",
+        "Results update instantly as user adjusts simulation parameters"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/scenarioSimulator.ts",
+          "operation": "create",
+          "description": "Create utility simulating price movements on all positions. Accept positions array and percentage change (positive or negative), calculate new simulated prices, run P&L calculations for each position, determine if positions would hit TP/SL or face liquidation, and return aggregated portfolio impact with individual position outcomes. Include preset scenarios: 'Market crash -20%', 'Bull run +30%', 'High volatility ±15%'."
+        },
+        {
+          "path": "frontend/src/components/ScenarioSimulator.tsx",
+          "operation": "create",
+          "description": "Create simulator component with slider input for custom percentage change (-50% to +50%), quick scenario preset buttons (Market crash, Bull run, High volatility), and live results display. Show total portfolio impact in USD and percentage with color coding (green profit, red loss). List individual position outcomes in cards with P&L, TP/SL status, and liquidation warnings. Use golden theme with prominent alert styling for warnings. Update results instantly as slider moves."
+        },
+        {
+          "path": "frontend/src/types/scenario.ts",
+          "operation": "create",
+          "description": "Define TypeScript types for scenario simulation including ScenarioInput with percentageChange field, PositionOutcome with positionId, simulatedPrice, projectedPnL, tpHit, slHit, liquidationRisk fields, ScenarioResult aggregating total portfolio impact and position outcomes array, and ScenarioPreset type for quick scenario definitions."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add ScenarioSimulator component as collapsible section in main dashboard area. Position below PortfolioExposureDashboard and above individual positions. Pass positions data from usePositionMonitoring hook to simulator. Use accordion or expandable card to save space when not in use. Maintain responsive layout and golden theme consistency."
+        }
+      ]
+    },
+    {
+      "id": "REQ-23",
+      "summary": "Design and integrate AI and risk management features into golden-themed UI with consistent styling, creating dashboard sections for AI insights and risk tools with responsive layouts",
+      "acceptanceCriteria": [
+        "All new features integrated into existing dashboard layout",
+        "Golden color theme applied consistently to all new components",
+        "AI insights section clearly separated from position monitoring",
+        "Risk management tools accessible via dedicated dashboard area",
+        "Responsive design works smoothly on mobile and desktop",
+        "Visual hierarchy maintained with proper card layouts and spacing",
+        "No layout shifts or flickering during real-time updates"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Add CSS custom properties for AI and risk management component styling including sentiment gauge colors (bullish green, bearish red, neutral gray), prediction arrow colors, adjustment suggestion alert colors, and calculator slider styling. Extend existing golden theme color variables for new component variants. Ensure dark mode compatibility for all new colors."
+        },
+        {
+          "path": "frontend/src/components/AIInsightsSection.tsx",
+          "operation": "create",
+          "description": "Create section component grouping AI-related features (sentiment analysis, trend predictions, adjustment suggestions) with clear heading and visual separation. Use golden-themed card container with proper spacing between subsections. Make collapsible/expandable to save space when not needed. Ensure responsive stacking on mobile devices."
+        },
+        {
+          "path": "frontend/src/components/RiskManagementSection.tsx",
+          "operation": "create",
+          "description": "Create section component grouping risk management tools (position size calculator, portfolio exposure dashboard, scenario simulator) with clear heading. Use golden-themed cards with grid layout for tools. Make responsive with proper stacking on mobile. Add section description explaining risk management purpose."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Reorganize main dashboard layout to accommodate new sections. Add RiskManagementSection with calculator in sidebar above PositionEntryForm. Add PortfolioExposureDashboard and ScenarioSimulator in main content area. Integrate AIInsightsSection components (sentiment, predictions, suggestions) into PositionCard. Maintain visual hierarchy with consistent spacing using Tailwind classes. Ensure no layout shifts during real-time updates by reserving space for loading states. Test responsive behavior on mobile and desktop viewports."
+        }
+      ]
+    }
+  ]
+}

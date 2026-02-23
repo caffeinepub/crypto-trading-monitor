@@ -1,0 +1,178 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-23T19:29:43.772Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 7,
+    "implemented": 7,
+    "items": [
+      {
+        "id": "REQ-17",
+        "summary": "Implement market sentiment analysis that aggregates sentiment indicators from multiple sources and displays a sentiment score (bullish/bearish/neutral) with visual gauge or indicator for each traded asset. Include sentiment strength percentage and brief explanation of contributing factors.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/sentimentAnalysis.ts",
+          "frontend/src/hooks/useSentimentAnalysis.ts",
+          "frontend/src/components/SentimentGauge.tsx",
+          "frontend/src/components/PositionCard.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/sentimentAnalysis.ts",
+          "frontend/src/hooks/useSentimentAnalysis.ts",
+          "frontend/src/components/SentimentGauge.tsx",
+          "frontend/src/components/PositionCard.tsx"
+        ]
+      },
+      {
+        "id": "REQ-18",
+        "summary": "Create trend prediction feature using technical indicators and pattern recognition that analyzes recent price action, volume, and momentum to predict short-term and medium-term trend direction. Display prediction confidence level, expected price movement direction (up/down/sideways), and time horizon for each prediction.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/trendPrediction.ts",
+          "frontend/src/hooks/useTrendPrediction.ts",
+          "frontend/src/components/TrendPredictionCard.tsx",
+          "frontend/src/types/prediction.ts",
+          "frontend/src/components/PositionCard.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/trendPrediction.ts",
+          "frontend/src/hooks/useTrendPrediction.ts",
+          "frontend/src/components/TrendPredictionCard.tsx",
+          "frontend/src/types/prediction.ts",
+          "frontend/src/components/PositionCard.tsx"
+        ]
+      },
+      {
+        "id": "REQ-19",
+        "summary": "Implement automatic TP/SL adjustment suggestions that continuously monitor market conditions (volatility changes, support/resistance breaks, momentum shifts) and recommend real-time adjustments to existing position targets. Display adjustment recommendations as actionable cards showing current vs. suggested TP/SL levels with reasoning for each change.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/adjustmentSuggestions.ts",
+          "frontend/src/hooks/useAdjustmentSuggestions.ts",
+          "frontend/src/components/AdjustmentSuggestionCard.tsx",
+          "frontend/src/types/adjustment.ts",
+          "frontend/src/hooks/usePositionStorage.ts",
+          "frontend/src/components/PositionCard.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/adjustmentSuggestions.ts",
+          "frontend/src/hooks/useAdjustmentSuggestions.ts",
+          "frontend/src/components/AdjustmentSuggestionCard.tsx",
+          "frontend/src/types/adjustment.ts",
+          "frontend/src/components/PositionCard.tsx"
+        ]
+      },
+      {
+        "id": "REQ-20",
+        "summary": "Create position size calculator that takes user's total capital, risk percentage per trade (1-10%), and stop-loss distance to calculate optimal position size and investment amount. Display recommended position size in USD, number of contracts, actual risk amount in USD, and risk-reward ratio. Include visual slider for risk percentage adjustment.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/positionSizeCalculator.ts",
+          "frontend/src/components/PositionSizeCalculator.tsx",
+          "frontend/src/types/calculator.ts",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/positionSizeCalculator.ts",
+          "frontend/src/components/PositionSizeCalculator.tsx",
+          "frontend/src/types/calculator.ts",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-21",
+        "summary": "Implement total portfolio exposure visualization that aggregates all active positions to show total capital at risk, total potential profit, portfolio-wide leverage exposure, and correlation risk between positions. Display as dashboard widget with visual charts showing exposure breakdown by asset, position type (long/short balance), and risk concentration.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/exposureCalculations.ts",
+          "frontend/src/hooks/usePortfolioExposure.ts",
+          "frontend/src/components/ExposureChart.tsx",
+          "frontend/src/components/PortfolioExposureDashboard.tsx",
+          "frontend/src/types/exposure.ts",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/exposureCalculations.ts",
+          "frontend/src/hooks/usePortfolioExposure.ts",
+          "frontend/src/components/ExposureChart.tsx",
+          "frontend/src/components/PortfolioExposureDashboard.tsx",
+          "frontend/src/types/exposure.ts",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-22",
+        "summary": "Create scenario simulator tool that allows users to input hypothetical price movements (as percentage changes) for their positions and see projected P&L outcomes. Display results showing total portfolio impact, individual position outcomes, margin requirements at simulated prices, and potential liquidation warnings. Include quick scenario presets like 'Market crash -20%', 'Bull run +30%', 'High volatility ±15%'.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/scenarioSimulator.ts",
+          "frontend/src/components/ScenarioSimulator.tsx",
+          "frontend/src/types/scenario.ts",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/scenarioSimulator.ts",
+          "frontend/src/components/ScenarioSimulator.tsx",
+          "frontend/src/types/scenario.ts",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-23",
+        "summary": "Design and integrate AI and risk management features into the existing golden-themed UI using consistent styling with Tailwind CSS. Create new dashboard sections or tabs for AI insights (sentiment, predictions, adjustment suggestions) and risk management tools (calculator, exposure, simulator). Ensure all new components follow the established visual hierarchy with cards, appropriate spacing, and responsive layouts that work on mobile and desktop.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/index.css",
+          "frontend/src/components/AIInsightsSection.tsx",
+          "frontend/src/components/RiskManagementSection.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/index.css",
+          "frontend/src/App.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AdjustmentSuggestionCard.tsx",
+    "frontend/src/components/ExposureChart.tsx",
+    "frontend/src/components/PortfolioExposureDashboard.tsx",
+    "frontend/src/components/PositionCard.tsx",
+    "frontend/src/components/PositionDashboard.tsx",
+    "frontend/src/components/PositionSizeCalculator.tsx",
+    "frontend/src/components/ScenarioSimulator.tsx",
+    "frontend/src/components/SentimentGauge.tsx",
+    "frontend/src/components/TrendPredictionCard.tsx",
+    "frontend/src/hooks/useAdjustmentSuggestions.ts",
+    "frontend/src/hooks/usePortfolioExposure.ts",
+    "frontend/src/hooks/useSentimentAnalysis.ts",
+    "frontend/src/hooks/useTrendPrediction.ts",
+    "frontend/src/index.css",
+    "frontend/src/types/adjustment.ts",
+    "frontend/src/types/calculator.ts",
+    "frontend/src/types/exposure.ts",
+    "frontend/src/types/prediction.ts",
+    "frontend/src/types/scenario.ts",
+    "frontend/src/types/sentiment.ts",
+    "frontend/src/utils/adjustmentSuggestions.ts",
+    "frontend/src/utils/exposureCalculations.ts",
+    "frontend/src/utils/positionSizeCalculator.ts",
+    "frontend/src/utils/scenarioSimulator.ts",
+    "frontend/src/utils/sentimentAnalysis.ts",
+    "frontend/src/utils/trendPrediction.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}
