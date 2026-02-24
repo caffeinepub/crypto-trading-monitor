@@ -1,17 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Apply a comprehensive set of stability fixes to the Crypto Position Monitor covering the Settings dialog, Live Trading toggle, Import from Binance button, order execution reliability, and reactive credential/live-trading state across all components.
+**Goal:** Enhance the Risk Management tab with live Binance Futures API data across all its components.
 
 **Planned changes:**
-- Rewrite SettingsDialog open/close state in App.tsx using a simple local `useState` hook, wiring the gear icon directly to open the dialog with no intermediate handlers or blocking CSS.
-- Completely refactor the Live Trading activation flow in `LiveTradingToggle.tsx` and `useLiveTradingMode.ts` to be fully non-blocking with async validation, AbortController timeouts (15s validation, 20s outer race), and proper `finally` cleanup so the toggle never stays stuck.
-- Audit and fix all `useEffect` hooks and window event listeners in `useLiveTradingMode.ts`, `usePositionStorage.ts`, and `useAITradeGeneration.ts` to register exactly once, always clean up on unmount, and prevent cascading re-renders.
-- Fix order execution in `usePositionStorage.ts` and `useAITradeGeneration.ts` so each Binance order call (`placeMarketOrder`, `placeTakeProfitMarketOrder`, `placeStopMarketOrder`) has its own try/catch with a 10-second timeout, positions are always saved to localStorage regardless of order failures, and specific toast notifications are shown for each outcome.
-- Fix `authenticatedFetch` in `binanceAuth.ts` to reliably apply a 15-second timeout via AbortController, combine caller signals with the internal timeout, always clear the timeout in a `finally` block, and throw a typed `BinanceApiError` with code `REQUEST_TIMEOUT` on timeout.
-- Fix the "Import from Binance" button in `DashboardTab.tsx` to reactively appear/disappear based on `hasCredentials()` by listening to the `credential-change` custom DOM event, removing any live-trading-mode guards from the visibility condition.
-- Fix the "Test Connection" button in `BinanceCredentialsPanel.tsx` to never freeze, wrapping the fetch in try/catch/finally with a 15-second timeout and always re-enabling the button after success, error, or timeout.
-- Ensure `CredentialStatusIndicator` in the app header subscribes to `credential-change` and `live-trading-change` DOM events to stay in sync without a page reload.
-- Audit all components and hooks that read localStorage at initialization and replace with reactive patterns driven by `credential-change` and `live-trading-change` custom DOM events, including `LiveTradingBanner`.
+- Update `PositionSizeCalculator` to fetch live current price from Binance ticker API for the selected symbol and display it as a reference next to the entry price field; fetch leverage bracket data to show max allowed leverage and maintenance margin rate; warn if chosen leverage exceeds the symbol's maximum allowed leverage.
+- Update `PortfolioExposureDashboard` and `usePortfolioExposure` hook to fetch live prices for all tracked symbols, calculate real-time unrealized PnL, current exposure (quantity × live price), and distance to liquidation price per position; refresh every 30 seconds; show stale data indicator on fetch failure.
+- Update `ScenarioSimulator` and `scenarioSimulator` utility to use live Binance prices as the simulation baseline; fetch recent kline data to compute ATR-based volatility presets ("1-day ATR", "3-day ATR") as additional preset buttons; display the live baseline price in the results panel; fall back to entry price with a warning on failure.
+- Add a new "Live Risk Metrics" summary card at the top of `RiskManagementTab` showing per-position estimated liquidation price, distance to liquidation as a percentage, and color-coded risk badges (green >20%, amber 10–20%, red <10%); include a portfolio-level summary row aggregating positions by risk level; refresh every 30 seconds.
+- All Binance API failures must be handled gracefully with fallback values or user-facing error messages.
 
-**User-visible outcome:** The Settings dialog opens reliably from the gear icon on all tabs; the Live Trading toggle activates without freezing the UI under any network condition; the "Import from Binance" button appears immediately after saving credentials; Binance order placements show clear success/failure toasts and never block position saving; the credential and live trading status indicators update instantly without requiring a page reload.
+**User-visible outcome:** The Risk Management tab displays real-time Binance data throughout — live prices, leverage limits, unrealized PnL, liquidation estimates, ATR-based scenario presets, and a color-coded live risk summary card at the top — all refreshing automatically every 30 seconds.

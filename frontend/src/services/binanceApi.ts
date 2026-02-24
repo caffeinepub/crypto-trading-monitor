@@ -24,6 +24,25 @@ export interface BinanceKline {
   closeTime: number;
 }
 
+export interface TickerPriceResponse {
+  symbol: string;
+  price: string;
+}
+
+export interface LeverageBracket {
+  bracket: number;
+  initialLeverage: number;
+  notionalCap: number;
+  notionalFloor: number;
+  maintMarginRatio: number;
+  cum: number;
+}
+
+export interface LeverageBracketResponse {
+  symbol: string;
+  brackets: LeverageBracket[];
+}
+
 /** Returns all USDT-M perpetual pair symbols as strings (used by PositionEntryForm / useBinancePairs) */
 export async function fetchPerpetualPairs(): Promise<string[]> {
   try {
@@ -51,6 +70,20 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
     console.error(`Error fetching price for ${symbol}:`, error);
     throw error;
   }
+}
+
+/** Fetch live ticker price for a symbol — returns typed TickerPriceResponse */
+export async function fetchTickerPrice(symbol: string): Promise<TickerPriceResponse> {
+  const response = await fetch(`${FAPI_V1}/ticker/price?symbol=${symbol}`);
+  if (!response.ok) throw new Error(`Failed to fetch ticker price for ${symbol}`);
+  return response.json() as Promise<TickerPriceResponse>;
+}
+
+/** Fetch leverage bracket data for a symbol from Binance public endpoint */
+export async function fetchLeverageBracket(symbol: string): Promise<LeverageBracketResponse[]> {
+  const response = await fetch(`${FAPI_V1}/leverageBracket?symbol=${symbol}`);
+  if (!response.ok) throw new Error(`Failed to fetch leverage bracket for ${symbol}`);
+  return response.json() as Promise<LeverageBracketResponse[]>;
 }
 
 /** Fetch prices for multiple symbols at once (used by AI trade monitoring) */

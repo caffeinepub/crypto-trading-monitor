@@ -37,6 +37,9 @@ export interface AITrade {
 
   // Binance order IDs when Live Trading is active (optional)
   binanceOrderIds?: BinanceOrderIds;
+
+  // Per-modality live order control (optional, defaults to false)
+  liveOrdersEnabled?: boolean;
 }
 
 export interface AITradeWithPrice extends AITrade {

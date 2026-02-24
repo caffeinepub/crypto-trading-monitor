@@ -16,6 +16,7 @@ function applyDefaults(trade: AITrade): AITrade {
     tp3Executed: trade.tp3Executed ?? false,
     effectiveSL: trade.effectiveSL ?? trade.stopLoss,
     riskManagementStep: trade.riskManagementStep ?? 'initial',
+    liveOrdersEnabled: trade.liveOrdersEnabled ?? false,
   };
 }
 

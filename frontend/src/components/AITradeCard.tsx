@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AITradeWithPrice, RiskManagementStep, TradingModality } from '../types/aiTrade';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   TrendingUp,
   TrendingDown,
@@ -19,8 +21,13 @@ import {
   ArrowUpRight,
   RotateCcw,
   XCircle,
-  TrendingDown as TrendingDownIcon,
+  Send,
 } from 'lucide-react';
+import {
+  isLiveTradingEnabled,
+  getModalityLiveOrders,
+  setModalityLiveOrder,
+} from '../utils/liveTradingStorage';
 
 interface AITradeCardProps {
   trade: AITradeWithPrice;
@@ -308,6 +315,101 @@ function ReversalBanner({ reversalReason, reversalAction, reversalConfidence }: 
   );
 }
 
+// ─── Per-Modality Live Orders Toggle ─────────────────────────────────────────
+
+interface ModalityLiveToggleProps {
+  modality: TradingModality;
+}
+
+function ModalityLiveToggle({ modality }: ModalityLiveToggleProps) {
+  const [globalLiveEnabled, setGlobalLiveEnabled] = useState(() => isLiveTradingEnabled());
+  const [modalityEnabled, setModalityEnabled] = useState(() => {
+    const map = getModalityLiveOrders();
+    return map[modality] ?? false;
+  });
+
+  const handleGlobalChange = useCallback(() => {
+    setGlobalLiveEnabled(isLiveTradingEnabled());
+  }, []);
+
+  const handleModalityChange = useCallback(() => {
+    const map = getModalityLiveOrders();
+    setModalityEnabled(map[modality] ?? false);
+  }, [modality]);
+
+  useEffect(() => {
+    window.addEventListener('live-trading-change', handleGlobalChange);
+    window.addEventListener('modality-live-orders-change', handleModalityChange);
+    return () => {
+      window.removeEventListener('live-trading-change', handleGlobalChange);
+      window.removeEventListener('modality-live-orders-change', handleModalityChange);
+    };
+  }, [handleGlobalChange, handleModalityChange]);
+
+  const handleToggle = (checked: boolean) => {
+    setModalityLiveOrder(modality, checked);
+    setModalityEnabled(checked);
+  };
+
+  const isActive = globalLiveEnabled && modalityEnabled;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all ${
+              isActive
+                ? 'border-emerald-500/30 bg-emerald-500/5'
+                : 'border-border/40 bg-muted/20'
+            } ${!globalLiveEnabled ? 'opacity-60' : ''}`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Send
+                className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
+                  isActive ? 'text-emerald-400' : 'text-muted-foreground'
+                }`}
+              />
+              <div className="min-w-0">
+                <p
+                  className={`text-xs font-medium leading-tight transition-colors ${
+                    isActive ? 'text-emerald-400' : 'text-muted-foreground'
+                  }`}
+                >
+                  Enviar ordens para Binance
+                </p>
+                <p className="text-[10px] text-muted-foreground/60 leading-tight mt-0.5">
+                  {!globalLiveEnabled
+                    ? 'Ative o Live Trading globalmente primeiro'
+                    : isActive
+                    ? `${MODALITY_CONFIG[modality].label} — ordens ativas`
+                    : `${MODALITY_CONFIG[modality].label} — ordens pausadas`}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={modalityEnabled}
+              onCheckedChange={handleToggle}
+              disabled={!globalLiveEnabled}
+              className="flex-shrink-0"
+            />
+          </div>
+        </TooltipTrigger>
+        {!globalLiveEnabled && (
+          <TooltipContent side="top" className="max-w-xs">
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              <p className="text-xs">
+                Ative o Live Trading globalmente nas Configurações para habilitar o envio de ordens por modalidade.
+              </p>
+            </div>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 export function AITradeCard({ trade }: AITradeCardProps) {
   const modalityConf = MODALITY_CONFIG[trade.modality];
   const isLong = trade.positionType === 'Long';
@@ -495,17 +597,28 @@ export function AITradeCard({ trade }: AITradeCardProps) {
 
         {/* TP Levels */}
         <div className="space-y-1.5">
-          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Alvos de Lucro</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
+            Níveis de Take Profit
+          </div>
           <TPLevelRow label="TP1" price={trade.tp1} progress={tp1Progress} executed={tp1Executed} />
           <TPLevelRow label="TP2" price={trade.tp2} progress={tp2Progress} executed={tp2Executed} />
           <TPLevelRow label="TP3" price={trade.tp3} progress={tp3Progress} executed={tp3Executed} />
         </div>
 
         {/* Reasoning */}
-        <div className="bg-muted/20 rounded-lg p-2.5">
-          <div className="text-xs text-muted-foreground font-medium mb-1 uppercase tracking-wide">Análise IA</div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{trade.reasoning}</p>
-        </div>
+        {trade.reasoning && (
+          <div className="rounded-lg bg-muted/20 px-3 py-2">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1">
+              Análise AI
+            </div>
+            <p className="text-xs text-muted-foreground/80 leading-relaxed line-clamp-3">
+              {trade.reasoning}
+            </p>
+          </div>
+        )}
+
+        {/* ── Per-Modality Live Orders Toggle ── */}
+        <ModalityLiveToggle modality={trade.modality} />
       </CardContent>
     </Card>
   );

@@ -85,6 +85,25 @@ export interface BinancePositionRisk {
   updateTime: number;
 }
 
+export interface TickerPriceResponse {
+  symbol: string;
+  price: string;
+}
+
+export interface LeverageBracket {
+  bracket: number;
+  initialLeverage: number;
+  notionalCap: number;
+  notionalFloor: number;
+  maintMarginRatio: number;
+  cum: number;
+}
+
+export interface LeverageBracketResponse {
+  symbol: string;
+  brackets: LeverageBracket[];
+}
+
 export type OrderSide = 'BUY' | 'SELL';
 export type OrderType = 'MARKET' | 'LIMIT' | 'STOP_MARKET' | 'TAKE_PROFIT_MARKET';
 export type OrderStatus = 'NEW' | 'FILLED' | 'CANCELED' | 'EXPIRED' | 'PARTIALLY_FILLED';

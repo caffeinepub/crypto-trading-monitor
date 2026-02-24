@@ -7,6 +7,9 @@ import { generateAITradeForModality } from '../utils/aiTradeSelection';
 import { getTotalCapital } from '../utils/totalCapitalStorage';
 import { saveAITradeHistory } from '../utils/aiTradeHistoryStorage';
 import { detectReversal } from '../utils/marketReversalDetector';
+import { isLiveTradingEnabled, getCredentials, getModalityLiveOrders } from '../utils/liveTradingStorage';
+import { placeMarketOrder, OrderParams } from '../services/binanceOrderService';
+import { toast } from 'sonner';
 
 const STORAGE_KEY = 'ai_daily_trades';
 const DEFAULT_INVESTMENT_PER_MODALITY = 1000;
@@ -68,6 +71,15 @@ function hasCrossedTP(currentPrice: number, tpPrice: number, positionType: 'Long
 function hasCrossedSL(currentPrice: number, slPrice: number, positionType: 'Long' | 'Short'): boolean {
   if (positionType === 'Long') return currentPrice <= slPrice;
   return currentPrice >= slPrice;
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`TIMEOUT:${label}`)), ms)
+    ),
+  ]);
 }
 
 export function useAITradeMonitoring(trades: AITrade[] | undefined) {
@@ -326,6 +338,28 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
               };
 
               saveStoredTrades(updatedStoredTrades);
+
+              // Place close order on Binance only if BOTH global live trading AND per-modality toggle are ON
+              if (isLiveTradingEnabled()) {
+                const modalityLiveOrders = getModalityLiveOrders();
+                const modalityEnabled = modalityLiveOrders[storedTrade.modality] === true;
+                if (modalityEnabled) {
+                  const creds = getCredentials();
+                  if (creds) {
+                    const closeParams: OrderParams = {
+                      symbol: storedTrade.symbol,
+                      side: storedTrade.positionType === 'Long' ? 'SELL' : 'BUY',
+                      quantity: parseFloat((storedTrade.investmentAmount / storedTrade.entryPrice).toFixed(3)),
+                      credentials: creds,
+                    };
+                    withTimeout(placeMarketOrder(closeParams), 10000, 'reversal-close').catch((err) => {
+                      const msg = err instanceof Error ? err.message : String(err);
+                      console.error(`Reversal close order failed for ${storedTrade.symbol}:`, msg);
+                      toast.error(`Falha ao fechar ${storedTrade.symbol} na Binance: ${msg}`);
+                    });
+                  }
+                }
+              }
 
               if (!regeneratingRef.current.has(storedTrade.modality)) {
                 regeneratingRef.current.add(storedTrade.modality);

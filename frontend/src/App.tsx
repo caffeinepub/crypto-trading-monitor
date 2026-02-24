@@ -27,7 +27,12 @@ export default function App() {
   } = usePositionStorage();
 
   const { data: positionsWithPrice = [] } = usePositionMonitoring(positions);
-  const exposure = usePortfolioExposure(positionsWithPrice);
+  const {
+    exposure,
+    enrichedPositions,
+    livePricesLoading,
+    livePricesError,
+  } = usePortfolioExposure(positionsWithPrice);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -95,6 +100,9 @@ export default function App() {
           <RiskManagementTab
             positions={positionsWithPrice}
             exposure={exposure}
+            enrichedPositions={enrichedPositions}
+            livePricesLoading={livePricesLoading}
+            livePricesError={livePricesError}
           />
         )}
       </main>

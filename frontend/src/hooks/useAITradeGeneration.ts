@@ -3,7 +3,7 @@ import { AITrade, TradingModality } from '../types/aiTrade';
 import { useAITradeStorage } from './useAITradeStorage';
 import { generateAITradeForModality } from '../utils/aiTradeSelection';
 import { getTotalCapital } from '../utils/totalCapitalStorage';
-import { isLiveTradingEnabled, getCredentials } from '../utils/liveTradingStorage';
+import { isLiveTradingEnabled, getCredentials, getModalityLiveOrders } from '../utils/liveTradingStorage';
 import {
   placeMarketOrder,
   placeTakeProfitOrder,
@@ -156,14 +156,18 @@ export function useAITradeGeneration() {
       // Always persist trades to localStorage first — before any order placement
       saveTrades(trades);
 
-      // Place live orders asynchronously if live trading is active
+      // Place live orders asynchronously if BOTH global live trading AND per-modality toggle are ON
       // Each order has an independent 10-second timeout and never blocks trade persistence
       if (isLiveTradingEnabled()) {
+        const modalityLiveOrders = getModalityLiveOrders();
         for (const trade of trades) {
-          placeAITradeOrders(trade).catch((err) => {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error(`AI trade order placement error for ${trade.symbol}:`, msg);
-          });
+          const modalityEnabled = modalityLiveOrders[trade.modality] === true;
+          if (modalityEnabled) {
+            placeAITradeOrders(trade).catch((err) => {
+              const msg = err instanceof Error ? err.message : String(err);
+              console.error(`AI trade order placement error for ${trade.symbol}:`, msg);
+            });
+          }
         }
       }
 

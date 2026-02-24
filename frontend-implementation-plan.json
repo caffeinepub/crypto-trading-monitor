@@ -1,211 +1,104 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Additional stability fixes: Live Trading toggle, Settings dialog, Import from Binance, and order execution reliability",
+  "title": "Enhance Risk Management tab with real Binance asset data",
   "requirements": [
     {
-      "id": "REQ-76",
-      "summary": "Rewrite SettingsDialog state management to use simple local useState with direct onClick wiring, removing all intermediate handlers and CSS interference",
+      "id": "REQ-89",
+      "summary": "Update PositionSizeCalculator to fetch and display live Binance price and leverage brackets for the selected asset",
       "acceptanceCriteria": [
-        "Clicking the gear icon in the app header opens the SettingsDialog immediately, without page reload.",
-        "The dialog is dismissible by clicking outside or pressing Escape.",
-        "The dialog opens correctly regardless of which tab is currently active.",
-        "No z-index or pointer-events CSS prevents the gear icon from receiving click events."
+        "PositionSizeCalculator fetches live price from Binance for the selected symbol and displays it as a reference alongside the entry price field",
+        "The component fetches leverage bracket data from https://fapi.binance.com/fapi/v1/leverageBracket and shows the max leverage and maintenance margin rate for the selected symbol at the user-chosen leverage",
+        "A warning is displayed if the selected leverage exceeds the maximum allowed leverage tier for the symbol",
+        "If the Binance API call fails, the component gracefully falls back to manual input without breaking the UI"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/services/binanceApi.ts",
           "operation": "modify",
-          "description": "Replace the current settingsOpen state management with a simple local useState hook (const [settingsOpen, setSettingsOpen] = React.useState(false)). Wire the gear icon button's onClick directly to () => setSettingsOpen(true) with no intermediate handlers, wrappers, or conditions. Pass open={settingsOpen} and onOpenChange={setSettingsOpen} to SettingsDialog. Remove any z-index, pointer-events, or overflow CSS that could intercept clicks on the gear button."
+          "description": "Add two new public API fetch functions: fetchTickerPrice(symbol: string) to fetch live current price from https://fapi.binance.com/fapi/v1/ticker/price?symbol=SYMBOL, and fetchLeverageBracket(symbol: string) to fetch leverage tiers from https://fapi.binance.com/fapi/v1/leverageBracket?symbol=SYMBOL. Both functions should return typed responses and handle errors gracefully with try-catch."
         },
         {
-          "path": "frontend/src/components/SettingsDialog.tsx",
+          "path": "frontend/src/types/binanceApi.ts",
           "operation": "modify",
-          "description": "Ensure the SettingsDialog component properly receives and respects the open and onOpenChange props from App.tsx. Verify that the dialog can be dismissed by clicking outside or pressing Escape, and that it renders correctly in all scenarios."
-        }
-      ]
-    },
-    {
-      "id": "REQ-77",
-      "summary": "Refactor Live Trading activation flow to be fully non-blocking with async credential validation, 15-second validation timeout, 20-second outer race timeout, and guaranteed state cleanup in finally block",
-      "acceptanceCriteria": [
-        "Enabling Live Trading does not freeze or hang the application under any network condition.",
-        "If the Binance validation request takes longer than 15 seconds, the toggle activates and shows a timeout toast.",
-        "If the full activation flow exceeds 20 seconds, the toggle resets to OFF with an error toast.",
-        "The loading/disabled state on the toggle is always cleared after success, failure, or timeout.",
-        "Disabling Live Trading works instantly without any async validation."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/LiveTradingToggle.tsx",
-          "operation": "modify",
-          "description": "Completely refactor the activation flow: (1) Remove any synchronous credential validation on the render thread. (2) Use state-driven rendering for the confirmation dialog instead of window.confirm. (3) Move credential validation into an async function guarded by a 15-second AbortController timeout. (4) Wrap the entire activation sequence (confirmation → validation → localStorage write → state update) in a single try/catch/finally with a 20-second outer Promise.race timeout. (5) In the finally block, always clear the loading/pending state. (6) If validation times out, still activate Live Trading and show toast: 'Credential check timed out — Live Trading enabled without verification'. (7) If any step throws, reset toggle to OFF and display specific error in toast. (8) Ensure disabling Live Trading works instantly without async validation."
+          "description": "Add TypeScript interface definitions for TickerPriceResponse (symbol: string, price: string) and LeverageBracketResponse (symbol: string, brackets: Array<{ bracket: number, initialLeverage: number, notionalCap: number, notionalFloor: number, maintMarginRatio: number, cum: number }>)."
         },
         {
-          "path": "frontend/src/hooks/useLiveTradingMode.ts",
+          "path": "frontend/src/components/PositionSizeCalculator.tsx",
           "operation": "modify",
-          "description": "Refactor the credential validation logic to be async with a 15-second AbortController timeout. Ensure the validation function can be called safely from LiveTradingToggle without blocking the React render thread. Remove any synchronous validation that could freeze the UI. Provide clear timeout and error handling that the toggle component can catch and display."
+          "description": "Add state to track the selected symbol (from a dropdown or input). On symbol change, fetch live price via fetchTickerPrice and display it as a read-only reference field near the entry price input. Fetch leverage bracket data via fetchLeverageBracket and display the maximum allowed leverage for the symbol. If the user's chosen leverage exceeds the max allowed, display an amber warning badge. Add error boundaries to handle API failures gracefully, showing a fallback message without breaking the calculator UI."
         }
       ]
     },
     {
-      "id": "REQ-78",
-      "summary": "Audit and fix all useEffect hooks and window event listeners responding to localStorage keys or custom DOM events to prevent infinite re-renders and ensure proper cleanup",
+      "id": "REQ-90",
+      "summary": "Update PortfolioExposureDashboard and usePortfolioExposure to enrich positions with live Binance prices and compute real-time metrics",
       "acceptanceCriteria": [
-        "Toggling Live Trading ON or OFF does not produce infinite re-render loops (verifiable via React DevTools Profiler).",
-        "All custom event listeners are cleaned up on component unmount.",
-        "No stale closures reference outdated state after live trading is toggled.",
-        "React Query cache is not invalidated unnecessarily when live trading state changes."
+        "PortfolioExposureDashboard fetches live current prices for all tracked position symbols from Binance ticker API",
+        "Real-time unrealized PnL is calculated and displayed per position using live prices",
+        "Current exposure (quantity × live price) is shown alongside entry-price-based exposure",
+        "Distance to estimated liquidation price is calculated and displayed for each position",
+        "Prices refresh every 30 seconds without layout shifts",
+        "If price fetch fails for a symbol, the component shows the last known value with a stale data indicator"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useLiveTradingMode.ts",
+          "path": "frontend/src/hooks/usePortfolioExposure.ts",
           "operation": "modify",
-          "description": "Audit all useEffect hooks that respond to 'live_trading_enabled' localStorage key or custom DOM events. Ensure each event listener is registered exactly once using an empty or stable dependency array. Add corresponding removeEventListener in cleanup function. Remove state setters or refs from dependency arrays that would cause re-registration on every render."
-        },
-        {
-          "path": "frontend/src/hooks/usePositionStorage.ts",
-          "operation": "modify",
-          "description": "Audit all useEffect hooks and event listeners related to live trading state. Ensure listeners are registered once with empty dependency array and properly cleaned up on unmount. Verify no stale closures reference outdated state after live trading toggle."
-        },
-        {
-          "path": "frontend/src/hooks/useAITradeGeneration.ts",
-          "operation": "modify",
-          "description": "Audit useEffect hooks responding to live trading changes. Ensure event listeners are registered once and cleaned up properly. Confirm toggling live trading does not trigger cascading re-renders or unnecessary React Query cache invalidations."
-        }
-      ]
-    },
-    {
-      "id": "REQ-79",
-      "summary": "Fix order execution flow to reliably send real Binance orders when Live Trading is active, with per-call 10-second timeouts, individual try/catch blocks, and guaranteed position persistence regardless of order failures",
-      "acceptanceCriteria": [
-        "A position is always saved to localStorage even if all Binance order calls fail or time out.",
-        "Each failed order call shows a specific toast notification identifying which order failed.",
-        "Successful order placements show a confirmation toast.",
-        "No single order failure prevents subsequent TP or SL orders from being attempted.",
-        "The 10-second per-call timeout is enforced independently for each order type."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/usePositionStorage.ts",
-          "operation": "modify",
-          "description": "Fix the order execution flow so that each call to placeMarketOrder, placeTakeProfitMarketOrder, and placeStopMarketOrder is wrapped in its own try/catch block. Enforce a 10-second per-call timeout using Promise.race. On timeout or error, log to console and show specific toast (e.g., 'Entry order timed out — position saved locally only') then continue execution. Ensure position creation and persistence to localStorage complete regardless of whether any individual Binance order call fails. On success, show confirmation toast (e.g., 'Entry order placed on Binance')."
-        },
-        {
-          "path": "frontend/src/hooks/useAITradeGeneration.ts",
-          "operation": "modify",
-          "description": "Apply the same order execution fix as usePositionStorage: wrap each order call (entry, TP, SL) in individual try/catch blocks with 10-second Promise.race timeouts. Show specific toast for each failure/timeout (e.g., 'AI trade entry order timed out — trade saved locally only'). Ensure AI trade activation completes and persists to localStorage regardless of order failures. Show confirmation toast on successful order placement."
-        }
-      ]
-    },
-    {
-      "id": "REQ-80",
-      "summary": "Fix authenticatedFetch helper to reliably apply 15-second timeout using internal AbortController, combining caller signals, and always clearing timeout in finally block",
-      "acceptanceCriteria": [
-        "All authenticated Binance API calls time out after 15 seconds and throw a typed BinanceApiError.",
-        "The internal timeout is always cleared after the fetch completes to prevent memory leaks.",
-        "Caller-provided abort signals are respected alongside the internal timeout.",
-        "A BinanceApiError with code 'REQUEST_TIMEOUT' is thrown (not a generic Error) on timeout."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/utils/binanceAuth.ts",
-          "operation": "modify",
-          "description": "Fix the authenticatedFetch helper to reliably apply the 15-second timeout: (1) Create an internal AbortController with a 15-second timeout using setTimeout. (2) If the caller passes an external signal, combine both using a new AbortController that aborts when either the caller's signal fires or the 15-second timer fires. (3) Always clear the internal timeout in a finally block after the fetch resolves or rejects. (4) On timeout, throw a BinanceApiError with code 'REQUEST_TIMEOUT' and message 'Request timed out after 15 seconds'. (5) Ensure this timeout applies uniformly to all callers: BinanceCredentialsPanel test button, useLiveTradingMode validation, binanceOrderService order placement, and binancePositionService position import."
-        }
-      ]
-    },
-    {
-      "id": "REQ-81",
-      "summary": "Fix 'Import from Binance' button visibility to reactively appear as soon as credentials are saved by listening to 'credential-change' event, removing live trading and connection test guards",
-      "acceptanceCriteria": [
-        "The 'Import from Binance' button appears in the Dashboard tab immediately after credentials are saved in the Settings dialog, without a page reload.",
-        "The button disappears immediately if credentials are cleared.",
-        "The button visibility is not affected by the Live Trading toggle state.",
-        "The credential-change event is dispatched correctly from BinanceCredentialsPanel after save and after clear."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/DashboardTab.tsx",
-          "operation": "modify",
-          "description": "Replace the static initial evaluation of hasCredentials() with a useState that is updated by listening to the 'credential-change' custom DOM event. Register the event listener once in a useEffect with an empty dependency array, and remove it on cleanup. Make the button visible solely based on hasCredentials() returning true — remove any additional guards such as live trading mode or connection test status from the visibility condition."
-        },
-        {
-          "path": "frontend/src/components/BinanceCredentialsPanel.tsx",
-          "operation": "modify",
-          "description": "Dispatch the 'credential-change' custom DOM event immediately after saving credentials to localStorage (after successful save operation) and immediately after clearing credentials. This ensures DashboardTab.tsx re-evaluates the button visibility without a page reload. Use window.dispatchEvent(new CustomEvent('credential-change'))."
-        }
-      ]
-    },
-    {
-      "id": "REQ-82",
-      "summary": "Fix 'Test Connection' button to never leave UI in frozen/loading state by using try/catch/finally with 15-second timeout and guaranteed state reset",
-      "acceptanceCriteria": [
-        "The Test Connection button is never permanently disabled or stuck in loading after a slow or failed request.",
-        "A timeout after 15 seconds shows a clear, non-alarming message and re-enables the button.",
-        "A successful connection shows a 'Connected' badge.",
-        "An invalid credentials response shows an 'Invalid credentials' badge.",
-        "The finally block always clears the loading/pending state."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/BinanceCredentialsPanel.tsx",
-          "operation": "modify",
-          "description": "Fix the 'Test Connection' button handler to wrap the fetch in a try/catch/finally block where the finally block always resets the loading state. Apply a 15-second AbortController timeout to the fetch call. If the timeout fires, display the status message: 'Connection test timed out — server did not respond in time. Your credentials may still be valid.' and clear the loading state. Ensure the button is re-enabled after timeout, error, or success so the user can retry. On success show 'Connected' badge, on invalid credentials show 'Invalid credentials' badge."
-        }
-      ]
-    },
-    {
-      "id": "REQ-83",
-      "summary": "Ensure CredentialStatusIndicator stays in sync with credential and live trading state changes by subscribing to custom DOM events and updating local state reactively",
-      "acceptanceCriteria": [
-        "The credential status indicator updates immediately when credentials are saved or cleared from the Settings dialog.",
-        "The live trading status reflected in the indicator updates immediately when the toggle is switched.",
-        "No page reload is required for the indicator to reflect the current state.",
-        "All event listeners are properly cleaned up on unmount."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/CredentialStatusIndicator.tsx",
-          "operation": "modify",
-          "description": "Subscribe to the 'credential-change' custom DOM event in a useEffect with an empty dependency array. On each event, re-evaluate hasCredentials() and isLiveTradingEnabled() and update local state. Also subscribe to the 'live-trading-change' event to update the live trading indicator. Clean up all event listeners on unmount. Ensure the indicator updates within the same render cycle as the credential save or live trading toggle."
-        }
-      ]
-    },
-    {
-      "id": "REQ-84",
-      "summary": "Audit all components/hooks using localStorage reads at initialization and replace with reactive patterns using useState + useEffect + custom DOM events",
-      "acceptanceCriteria": [
-        "No component reads localStorage once on mount and never updates — all credential and live trading state reads are reactive.",
-        "The LiveTradingBanner appears immediately when live trading is activated and disappears when deactivated.",
-        "All reactive localStorage reads are driven by the corresponding custom DOM events.",
-        "No additional page reloads are required for any UI element to reflect current localStorage state."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/LiveTradingBanner.tsx",
-          "operation": "modify",
-          "description": "Replace any static localStorage reads with reactive patterns: use useState initializer combined with a useEffect that subscribes to the 'live-trading-change' custom DOM event. Update local state on each event. Clean up event listener on unmount. Document with a comment indicating the event it listens to. Ensure the banner appears/disappears immediately when live trading is activated/deactivated."
+          "description": "Add a React Query hook (or polling logic) that fetches live prices for all position symbols using fetchTickerPrice every 30 seconds. Merge the live prices into the positions array. Compute real-time unrealized PnL using (currentPrice - entryPrice) * quantity * leverage. Compute current exposure as quantity × currentPrice. For liquidation distance, use maintenance margin rate (from leverage bracket) to estimate liquidation price, then compute percentage distance from current price. Return these enriched metrics alongside existing exposure calculations."
         },
         {
           "path": "frontend/src/components/PortfolioExposureDashboard.tsx",
           "operation": "modify",
-          "description": "Audit any calls to getTotalCapital() or other localStorage reads that run only once on mount. Move them inside a useState initializer combined with a useEffect that subscribes to relevant custom DOM events (e.g., 'total-capital-change' if such an event exists, or create one). Ensure reactive updates without page reload. Document with comments."
+          "description": "Update the dashboard cards to display live-price-based metrics: real-time unrealized PnL per position, current exposure (quantity × live price), and distance to liquidation price as a percentage. Clearly label entry-price-based vs. current-price-based values. If a price fetch fails, show the last known value with a 'stale data' badge or icon. Ensure the UI does not shift layout when prices refresh every 30 seconds."
+        }
+      ]
+    },
+    {
+      "id": "REQ-91",
+      "summary": "Update ScenarioSimulator to use live Binance prices as baseline and add ATR-based volatility presets",
+      "acceptanceCriteria": [
+        "ScenarioSimulator fetches live current prices from Binance ticker API and uses them as the simulation baseline instead of entry prices",
+        "ATR-based volatility presets (e.g., '1-day ATR', '3-day ATR') are fetched from recent kline data and displayed as additional preset scenario buttons",
+        "The live price used as baseline is displayed clearly in the simulation results for each position",
+        "Existing preset scenarios ('Market crash -20%', 'Bull run +30%', 'High volatility ±15%') continue to work unchanged",
+        "If live price fetch fails, the simulator falls back to entry price with a visible warning message"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/scenarioSimulator.ts",
+          "operation": "modify",
+          "description": "Modify the simulation baseline logic to accept live current prices instead of entry prices. For each position, use the live price from fetchTickerPrice. Fetch recent kline data (e.g., 100 hourly candles) via fetchKlines and compute ATR (Average True Range). Generate dynamic preset buttons labeled '1-day ATR move' and '3-day ATR move' representing ±1 ATR and ±3 ATR percentage changes from the live baseline. If the live price fetch fails, fall back to entry price and include a fallback flag in the result."
         },
         {
-          "path": "frontend/src/components/TotalCapitalSummary.tsx",
+          "path": "frontend/src/components/ScenarioSimulator.tsx",
           "operation": "modify",
-          "description": "Audit getTotalCapital() reads and replace with reactive pattern using useState + useEffect subscribing to a 'total-capital-change' or similar custom DOM event. Ensure the summary updates immediately when capital is changed elsewhere in the app. Clean up listeners on unmount. Document with comments."
+          "description": "Fetch live prices for all position symbols on component mount and every 30 seconds. Pass the live prices as the simulation baseline to the scenarioSimulator utility. Render ATR-based preset buttons ('1-day ATR', '3-day ATR') alongside existing presets. Display the live price used as baseline in the simulation results panel for each position. If the live price fetch fails, show a warning message ('Using entry price as fallback') near the results."
+        }
+      ]
+    },
+    {
+      "id": "REQ-92",
+      "summary": "Add a 'Live Risk Metrics' summary card at the top of the Risk Management tab showing real-time liquidation risk",
+      "acceptanceCriteria": [
+        "A 'Live Risk Metrics' card is rendered at the top of the Risk Management tab",
+        "Estimated liquidation price is computed per position using leverage bracket maintenance margin rates from Binance API",
+        "Distance to liquidation is shown as a percentage using the live current price",
+        "Color-coded badges indicate liquidation risk: green (>20%), amber (10–20%), red (<10%)",
+        "A portfolio summary row shows how many positions fall into each risk level",
+        "All metrics refresh every 30 seconds",
+        "If the leverageBracket or ticker API call fails, the card shows a 'Data unavailable' message without crashing"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/LiveRiskMetricsCard.tsx",
+          "operation": "create",
+          "description": "Create a new React component that fetches live prices via fetchTickerPrice and leverage bracket data via fetchLeverageBracket for all active positions every 30 seconds. For each position, compute estimated liquidation price using the formula: liquidationPrice = entryPrice × (1 ± (1 / leverage - maintMarginRatio)) (adjust sign for long/short). Compute distance to liquidation as ((currentPrice - liquidationPrice) / currentPrice) × 100. Display a color-coded badge: green if distance >20%, amber if 10–20%, red if <10%. Show a portfolio summary row aggregating the count of positions at each risk level. Handle API errors gracefully by showing 'Data unavailable' without crashing the UI."
         },
         {
-          "path": "frontend/src/utils/liveTradingStorage.ts",
+          "path": "frontend/src/components/RiskManagementTab.tsx",
           "operation": "modify",
-          "description": "Ensure that all state-changing functions (setLiveTradingEnabled, setCredentials, clearCredentials) dispatch the appropriate custom DOM events ('live-trading-change', 'credential-change') immediately after updating localStorage. This ensures all listening components update reactively."
-        },
-        {
-          "path": "frontend/src/utils/totalCapitalStorage.ts",
-          "operation": "modify",
-          "description": "Add a custom DOM event dispatch (e.g., 'total-capital-change') immediately after writing to localStorage in the save function. This enables reactive updates in any component that displays or depends on total capital. Add a comment documenting the event name."
+          "description": "Import and render the new LiveRiskMetricsCard component at the top of the Risk Management tab layout, above the existing PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator components. Pass the active positions array as a prop to LiveRiskMetricsCard. Ensure the card is only displayed when positions exist, otherwise show the existing placeholder."
         }
       ]
     }

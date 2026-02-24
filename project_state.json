@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 45,
+  "projectStateVersion": 49,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -21,7 +21,7 @@
     "Enabling 'Live Trade Mode' causes the application to freeze/hang — the only recovery is closing the app; orders are not being sent to Binance",
     "'Import from Binance' button not visible in Dashboard tab even when Binance credentials are configured and connection test passes"
   ],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
       "id": "feature-create-a-manual-position-entry-form-with-fields-for-asset-selection-dropdown-autocomplete-validated-against-binance-usd-m-futures-perpetual-pairs-position-type-long-short-selector-leverage-1x-to-125x-numeric-input-entry-price-numeric-input-and-investment-amount-in-usd-numeric-input-calculate-and-prominently-display-total-exposure-as-investment-leverage",
@@ -694,6 +694,70 @@
         "REQ-84"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-extend-the-aitrade-typescript-type-frontend-src-types-aitrade-ts-to-include-an-optional-boolean-field-liveordersenabled-that-controls-whether-real-binance-orders-are-sent-for-that-specific-modality-default-the-field-to-false-for-backward-compatibility-with-existing-stored-trades",
+      "title": "Extend the AITrade TypeScript type (frontend/src/types/aiTrade.ts) to include an optional boolean field 'liveOrdersEnabled' that controls whether real Binance orders are sent for that specific modality. Default the field to false for backward compatibility with existing stored trades.",
+      "reqIds": [
+        "REQ-85"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-localstorage-utility-function-to-frontend-src-utils-livetradingstorage-ts-or-a-dedicated-utility-that-reads-and-writes-per-modality-live-order-settings-under-the-key-modality-live-orders-as-a-json-object-keyed-by-modality-name-e-g-scalping-true-day-trading-false-swing-trading-false-trend-following-false-expose-getmodalityliveorders-setmodalityliveorder-modality-enabled-and-dispatch-a-custom-dom-event-modality-live-orders-change-after-every-write-so-dependent-components-update-reactively",
+      "title": "Add a localStorage utility function to frontend/src/utils/liveTradingStorage.ts (or a dedicated utility) that reads and writes per-modality live order settings under the key 'modality_live_orders' as a JSON object keyed by modality name (e.g., { 'Scalping': true, 'Day Trading': false, 'Swing Trading': false, 'Trend Following': false }). Expose getModalityLiveOrders(), setModalityLiveOrder(modality, enabled), and dispatch a custom DOM event 'modality-live-orders-change' after every write so dependent components update reactively.",
+      "reqIds": [
+        "REQ-86"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-toggle-switch-labeled-send-orders-to-binance-to-each-aitradecard-component-frontend-src-components-aitradecard-tsx-one-per-modality-card-the-switch-must-1-read-its-initial-state-from-getmodalityliveorders-for-the-card-s-modality-2-reactively-update-when-the-modality-live-orders-change-dom-event-fires-3-call-setmodalityliveorder-modality-newvalue-when-toggled-4-be-disabled-and-show-a-tooltip-enable-live-trading-globally-first-when-the-global-live-trading-mode-is-off-islivetradingenabled-returns-false-5-be-fully-functional-enabled-disabled-independently-per-modality-when-global-live-trading-mode-is-on-style-the-toggle-consistently-with-the-existing-golden-themed-design",
+      "title": "Add a toggle switch (labeled 'Send orders to Binance') to each AITradeCard component (frontend/src/components/AITradeCard.tsx), one per modality card. The switch must: (1) read its initial state from getModalityLiveOrders() for the card's modality; (2) reactively update when the 'modality-live-orders-change' DOM event fires; (3) call setModalityLiveOrder(modality, newValue) when toggled; (4) be disabled and show a tooltip 'Enable Live Trading globally first' when the global live trading mode is OFF (isLiveTradingEnabled() returns false); (5) be fully functional (enabled/disabled independently per modality) when global live trading mode is ON. Style the toggle consistently with the existing golden-themed design.",
+      "reqIds": [
+        "REQ-87"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-order-placement-logic-in-useaitradegeneration-ts-and-useaitrademonitoring-ts-so-that-real-binance-orders-entry-take-profit-market-stop-market-are-only-sent-for-an-ai-trade-when-both-conditions-are-true-1-global-live-trading-mode-is-on-islivetradingenabled-returns-true-and-2-the-per-modality-live-orders-setting-is-on-for-that-trade-s-modality-getmodalityliveorders-trade-modality-true-if-either-condition-is-false-skip-order-placement-and-continue-with-the-local-simulated-flow-as-before",
+      "title": "Update the order placement logic in useAITradeGeneration.ts and useAITradeMonitoring.ts so that real Binance orders (entry, TAKE_PROFIT_MARKET, STOP_MARKET) are only sent for an AI trade when BOTH conditions are true: (1) global live trading mode is ON (isLiveTradingEnabled() returns true) AND (2) the per-modality live orders setting is ON for that trade's modality (getModalityLiveOrders()[trade.modality] === true). If either condition is false, skip order placement and continue with the local/simulated flow as before.",
+      "reqIds": [
+        "REQ-88"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-positionsizecalculator-component-frontend-src-components-positionsizecalculator-tsx-to-fetch-and-use-the-live-current-price-from-the-binance-futures-api-https-fapi-binance-com-fapi-v1-ticker-price-symbol-symbol-for-the-selected-asset-when-calculating-position-size-display-the-live-price-next-to-the-entry-price-field-as-a-reference-also-fetch-and-display-the-leverage-brackets-tiers-for-the-selected-symbol-from-https-fapi-binance-com-fapi-v1-leveragebracket-symbol-symbol-public-endpoint-no-auth-required-to-show-the-maximum-allowed-leverage-and-the-corresponding-maintenance-margin-rate-at-the-selected-leverage-level-warn-the-user-if-their-chosen-leverage-exceeds-the-maximum-allowed-for-the-selected-symbol",
+      "title": "Update the PositionSizeCalculator component (frontend/src/components/PositionSizeCalculator.tsx) to fetch and use the live current price from the Binance Futures API (https://fapi.binance.com/fapi/v1/ticker/price?symbol=SYMBOL) for the selected asset when calculating position size. Display the live price next to the entry price field as a reference. Also fetch and display the leverage brackets/tiers for the selected symbol from https://fapi.binance.com/fapi/v1/leverageBracket?symbol=SYMBOL (public endpoint, no auth required) to show the maximum allowed leverage and the corresponding maintenance margin rate at the selected leverage level. Warn the user if their chosen leverage exceeds the maximum allowed for the selected symbol.",
+      "reqIds": [
+        "REQ-89"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-portfolioexposuredashboard-component-frontend-src-components-portfolioexposuredashboard-tsx-and-its-underlying-useportfolioexposure-hook-frontend-src-hooks-useportfolioexposure-ts-to-enrich-each-position-with-its-live-current-price-fetched-from-the-binance-futures-ticker-api-https-fapi-binance-com-fapi-v1-ticker-price-use-the-live-prices-to-calculate-real-time-unrealized-pnl-per-position-real-current-exposure-quantity-current-price-and-distance-to-liquidation-price-display-these-live-price-based-metrics-in-the-dashboard-cards-clearly-distinguishing-between-entry-price-based-and-current-price-based-exposure-values-refresh-live-prices-every-30-seconds",
+      "title": "Update the PortfolioExposureDashboard component (frontend/src/components/PortfolioExposureDashboard.tsx) and its underlying usePortfolioExposure hook (frontend/src/hooks/usePortfolioExposure.ts) to enrich each position with its live current price fetched from the Binance Futures ticker API (https://fapi.binance.com/fapi/v1/ticker/price). Use the live prices to calculate real-time unrealized PnL per position, real current exposure (quantity × current price), and distance to liquidation price. Display these live-price-based metrics in the dashboard cards, clearly distinguishing between entry-price-based and current-price-based exposure values. Refresh live prices every 30 seconds.",
+      "reqIds": [
+        "REQ-90"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-scenariosimulator-component-frontend-src-components-scenariosimulator-tsx-and-its-underlying-scenariosimulator-utility-frontend-src-utils-scenariosimulator-ts-to-use-live-current-prices-from-the-binance-futures-ticker-api-https-fapi-binance-com-fapi-v1-ticker-price-as-the-baseline-for-all-scenario-calculations-instead-of-entry-prices-additionally-fetch-atr-based-volatility-data-via-recent-klines-https-fapi-binance-com-fapi-v1-klines-for-each-position-s-symbol-to-dynamically-suggest-realistic-scenario-percentages-e-g-1-day-atr-move-3-day-atr-move-as-preset-buttons-alongside-the-existing-presets-display-the-current-live-price-used-as-the-simulation-baseline-for-each-position-in-the-results-panel",
+      "title": "Update the ScenarioSimulator component (frontend/src/components/ScenarioSimulator.tsx) and its underlying scenarioSimulator utility (frontend/src/utils/scenarioSimulator.ts) to use live current prices from the Binance Futures ticker API (https://fapi.binance.com/fapi/v1/ticker/price) as the baseline for all scenario calculations instead of entry prices. Additionally, fetch ATR-based volatility data via recent klines (https://fapi.binance.com/fapi/v1/klines) for each position's symbol to dynamically suggest realistic scenario percentages (e.g., '1-day ATR move', '3-day ATR move') as preset buttons alongside the existing presets. Display the current live price used as the simulation baseline for each position in the results panel.",
+      "reqIds": [
+        "REQ-91"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-new-live-risk-metrics-summary-card-at-the-top-of-the-risk-management-tab-frontend-src-components-riskmanagementtab-tsx-that-displays-real-time-aggregate-risk-data-fetched-from-binance-for-each-active-position-compute-and-display-1-estimated-liquidation-price-using-the-formula-based-on-leverage-entry-price-and-maintenance-margin-rate-fetched-from-https-fapi-binance-com-fapi-v1-leveragebracket-2-distance-to-liquidation-as-a-percentage-from-the-current-live-price-3-a-color-coded-liquidation-risk-badge-green-if-20-away-amber-if-10-20-away-red-if-10-away-show-a-portfolio-level-summary-row-aggregating-the-number-of-positions-at-each-risk-level-refresh-all-metrics-every-30-seconds",
+      "title": "Add a new 'Live Risk Metrics' summary card at the top of the Risk Management tab (frontend/src/components/RiskManagementTab.tsx) that displays real-time aggregate risk data fetched from Binance. For each active position, compute and display: (1) estimated liquidation price using the formula based on leverage, entry price, and maintenance margin rate fetched from https://fapi.binance.com/fapi/v1/leverageBracket; (2) distance to liquidation as a percentage from the current live price; (3) a color-coded liquidation risk badge — green if >20% away, amber if 10–20% away, red if <10% away. Show a portfolio-level summary row aggregating the number of positions at each risk level. Refresh all metrics every 30 seconds.",
+      "reqIds": [
+        "REQ-92"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -844,6 +908,18 @@
     {
       "id": "AR-25",
       "summary": "Read and import open positions from Binance Futures account into the app dashboard using authenticated API calls",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-26",
+      "summary": "Add a per-modality live trading toggle switch on each AI Daily Trade card (Scalping, Day Trading, Swing Trading, Trend Following) to individually enable/disable real Binance order execution for that specific modality, independent of the global Live Trading toggle",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Update the Risk Management tab to use real asset data from Binance (live prices, volatility, leverage tiers, liquidation prices) for more accurate position size calculations, portfolio exposure, and scenario simulations",
       "reqIds": [],
       "status": "pending"
     }

@@ -1,22 +1,37 @@
 /**
  * liveTradingStorage.ts
- * Manages live trading mode and Binance credentials in localStorage.
+ * Manages live trading mode, Binance credentials, and per-modality live order settings in localStorage.
  * All window event dispatches are deferred via setTimeout(0) to prevent
  * synchronous re-render cascades and infinite loops.
  *
  * Custom DOM events dispatched:
  *   - 'live-trading-change': when live trading is enabled/disabled
  *   - 'credential-change': when credentials are saved or cleared
+ *   - 'modality-live-orders-change': when a per-modality toggle is changed
  *   (Legacy names 'liveTradingChanged' and 'credentialsChanged' are also dispatched for backward compatibility)
  */
 
+import { TradingModality } from '../types/aiTrade';
+
 const LIVE_TRADING_KEY = 'live_trading_enabled';
 const CREDENTIALS_KEY = 'binance_credentials';
+const MODALITY_LIVE_ORDERS_KEY = 'modality_live_orders';
 
 export interface BinanceCredentials {
   apiKey: string;
   apiSecret: string;
 }
+
+export type ModalityLiveOrdersMap = Record<TradingModality, boolean>;
+
+const DEFAULT_MODALITY_LIVE_ORDERS: ModalityLiveOrdersMap = {
+  Scalping: false,
+  DayTrading: false,
+  SwingTrading: false,
+  TrendFollowing: false,
+};
+
+// ── Live Trading Mode ──────────────────────────────────────────────────────────
 
 export function isLiveTradingEnabled(): boolean {
   try {
@@ -38,6 +53,8 @@ export function setLiveTradingEnabled(value: boolean): void {
     // Ignore storage errors
   }
 }
+
+// ── Credentials ───────────────────────────────────────────────────────────────
 
 export function getCredentials(): BinanceCredentials | null {
   try {
@@ -78,6 +95,46 @@ export function clearCredentials(): void {
 export function hasCredentials(): boolean {
   const creds = getCredentials();
   return !!(creds && creds.apiKey && creds.apiSecret);
+}
+
+// ── Per-Modality Live Orders ──────────────────────────────────────────────────
+
+/**
+ * Returns the stored per-modality live orders map.
+ * Defaults all modalities to false if nothing is stored or if JSON parsing fails.
+ */
+export function getModalityLiveOrders(): ModalityLiveOrdersMap {
+  try {
+    const raw = localStorage.getItem(MODALITY_LIVE_ORDERS_KEY);
+    if (!raw) return { ...DEFAULT_MODALITY_LIVE_ORDERS };
+    const parsed = JSON.parse(raw) as Partial<ModalityLiveOrdersMap>;
+    return {
+      ...DEFAULT_MODALITY_LIVE_ORDERS,
+      ...parsed,
+    };
+  } catch {
+    return { ...DEFAULT_MODALITY_LIVE_ORDERS };
+  }
+}
+
+/**
+ * Updates the live order toggle for a specific modality and persists to localStorage.
+ * Dispatches 'modality-live-orders-change' custom DOM event after writing.
+ */
+export function setModalityLiveOrder(modality: TradingModality, enabled: boolean): void {
+  try {
+    const current = getModalityLiveOrders();
+    current[modality] = enabled;
+    localStorage.setItem(MODALITY_LIVE_ORDERS_KEY, JSON.stringify(current));
+    // Defer event dispatch to prevent synchronous re-render cascades
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('modality-live-orders-change', { detail: { modality, enabled } })
+      );
+    }, 0);
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 // ── Legacy aliases kept for backward compatibility ──────────────────────────
