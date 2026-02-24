@@ -1,12 +1,15 @@
 # Specification
 
 ## Summary
-**Goal:** Add an always-visible "Download App / Install App" button to the app header that guides users through PWA installation regardless of browser support.
+**Goal:** Reorganize the Crypto Position Monitor app into a four-tab navigation layout without changing any existing component logic or styling.
 
 **Planned changes:**
-- Update `InstallButton.tsx` so the button is always visible in the header, never conditionally hidden based on browser PWA prompt availability.
-- When clicked, attempt the native `beforeinstallprompt` install flow via the existing `usePWAInstall` hook if available.
-- If the native prompt is not available, display a modal with step-by-step manual installation instructions for Chrome (Add to Home Screen via browser menu), Safari (Share → Add to Home Screen), and Edge.
-- Style the button and modal consistently with the existing golden color theme, ensuring correct layout on both mobile and desktop.
+- Add a persistent tab bar below the app header with four tabs: Dashboard, AI Daily Trades, AI Insights, and Risk Management
+- Keep the header (logo, install button, capital summary) always visible above the tab bar
+- **Dashboard tab** (default): TotalCapitalSummary, PositionEntryForm, and PositionDashboard
+- **AI Daily Trades tab**: AIDailyTradesSummary banner and AIDailyTradesSection with all four modality trade cards
+- **AI Insights tab**: Per-position groupings of SentimentGauge, TrendPredictionCard, and AdjustmentSuggestionCard; shows empty-state message when no positions exist
+- **Risk Management tab**: PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator in a responsive layout
+- Tab bar styled with the existing golden accent theme; active tab clearly highlighted
 
-**User-visible outcome:** Users always see an "Install App" button in the header. Clicking it either triggers the native browser install prompt or shows clear, browser-specific instructions for manually adding the app to their home screen.
+**User-visible outcome:** Users can switch between four organized tabs to access their active positions/dashboard, AI daily trades, AI insights per position, and risk management tools, all within the existing golden-themed design.

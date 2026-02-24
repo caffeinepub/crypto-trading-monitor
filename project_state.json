@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 17,
+  "projectStateVersion": 21,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -17,7 +17,7 @@
   "known_issues": [
     "PWA installation via beforeinstallprompt not working reliably; user requests a direct download/install button to force the process"
   ],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
       "id": "feature-create-a-manual-position-entry-form-with-fields-for-asset-selection-dropdown-autocomplete-validated-against-binance-usd-m-futures-perpetual-pairs-position-type-long-short-selector-leverage-1x-to-125x-numeric-input-entry-price-numeric-input-and-investment-amount-in-usd-numeric-input-calculate-and-prominently-display-total-exposure-as-investment-leverage",
@@ -306,6 +306,70 @@
         "REQ-36"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-create-a-new-ai-daily-trades-section-page-in-the-frontend-that-showcases-one-simulated-ai-trade-per-trading-modality-the-supported-modalities-must-include-scalping-very-short-term-minutes-day-trading-intraday-swing-trading-multi-day-and-trend-following-longer-term-each-trade-entry-must-display-the-asset-symbol-binance-usdt-m-futures-perpetual-position-type-long-short-entry-price-current-price-fetched-live-from-https-fapi-binance-com-fapi-v1-ticker-price-leverage-used-investment-amount-current-pnl-in-usd-and-percentage-tp1-tp2-tp3-levels-stop-loss-level-trade-status-open-closed-tp-hit-sl-hit-and-the-timestamp-when-the-trade-was-initiated-daily-reset-each-utc-day",
+      "title": "Create a new 'AI Daily Trades' section/page in the frontend that showcases one simulated AI trade per trading modality. The supported modalities must include: Scalping (very short-term, minutes), Day Trading (intraday), Swing Trading (multi-day), and Trend Following (longer-term). Each trade entry must display: the asset symbol (Binance USDT-M Futures perpetual), position type (Long/Short), entry price, current price (fetched live from https://fapi.binance.com/fapi/v1/ticker/price), leverage used, investment amount, current PnL in USD and percentage, TP1/TP2/TP3 levels, stop-loss level, trade status (Open/Closed/TP Hit/SL Hit), and the timestamp when the trade was initiated (daily reset each UTC day).",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-an-ai-trade-selection-algorithm-in-the-frontend-that-automatically-picks-one-asset-and-determines-entry-direction-long-short-leverage-and-investment-amount-for-each-trading-modality-once-per-utc-day-the-algorithm-must-use-real-binance-kline-data-https-fapi-binance-com-fapi-v1-klines-to-compute-technical-indicators-trend-direction-rsi-atr-momentum-appropriate-to-each-modality-s-timeframe-scalping-uses-1m-5m-klines-day-trading-uses-15m-1h-klines-swing-trading-uses-4h-1d-klines-trend-following-uses-1d-1w-klines-the-selected-trades-and-their-parameters-must-be-persisted-in-localstorage-under-the-key-ai-daily-trades-and-reset-regenerated-once-per-utc-day-when-the-stored-date-differs-from-today-s-utc-date",
+      "title": "Implement an AI trade selection algorithm in the frontend that automatically picks one asset and determines entry direction (Long/Short), leverage, and investment amount for each trading modality once per UTC day. The algorithm must use real Binance kline data (https://fapi.binance.com/fapi/v1/klines) to compute technical indicators (trend direction, RSI, ATR, momentum) appropriate to each modality's timeframe: Scalping uses 1m/5m klines, Day Trading uses 15m/1h klines, Swing Trading uses 4h/1d klines, Trend Following uses 1d/1w klines. The selected trades and their parameters must be persisted in localStorage under the key 'ai_daily_trades' and reset/regenerated once per UTC day (when the stored date differs from today's UTC date).",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-visual-ai-daily-trades-dashboard-ui-that-renders-each-modality-s-trade-as-a-styled-card-consistent-with-the-existing-golden-themed-design-each-card-must-include-a-modality-badge-label-e-g-scalping-day-trading-swing-trading-trend-following-a-color-coded-pnl-indicator-green-for-profit-red-for-loss-tp-level-progress-indicators-showing-how-close-the-current-price-is-to-each-tp-level-an-sl-proximity-warning-when-price-is-within-10-of-the-stop-loss-a-brief-ai-reasoning-summary-explaining-why-the-asset-and-direction-were-chosen-based-on-the-technical-indicators-computed-during-trade-selection-and-a-last-updated-timestamp-display-a-daily-performance-summary-header-showing-total-ai-portfolio-pnl-across-all-four-trades",
+      "title": "Create a visual AI Daily Trades dashboard UI that renders each modality's trade as a styled card consistent with the existing golden-themed design. Each card must include: a modality badge/label (e.g., 'Scalping', 'Day Trading', 'Swing Trading', 'Trend Following'), a color-coded PnL indicator (green for profit, red for loss), TP level progress indicators showing how close the current price is to each TP level, an SL proximity warning when price is within 10% of the stop-loss, a brief AI reasoning summary explaining why the asset and direction were chosen (based on the technical indicators computed during trade selection), and a 'Last updated' timestamp. Display a daily performance summary header showing total AI portfolio PnL across all four trades.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refactor-the-main-app-tsx-layout-to-use-a-tab-based-navigation-system-with-four-tabs-dashboard-ai-daily-trades-ai-insights-and-risk-management-the-header-logo-install-download-app-button-must-remain-visible-at-all-times-above-the-tab-bar-only-the-content-of-the-active-tab-should-be-rendered-or-kept-mounted-but-hidden-to-avoid-layout-shifts",
+      "title": "Refactor the main App.tsx layout to use a tab-based navigation system with four tabs: 'Dashboard', 'AI Daily Trades', 'AI Insights', and 'Risk Management'. The header (logo, Install/Download App button) must remain visible at all times above the tab bar. Only the content of the active tab should be rendered (or kept mounted but hidden) to avoid layout shifts.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-move-the-dashboard-tab-content-to-include-the-totalcapitalsummary-card-the-positionentryform-and-the-positiondashboard-active-positions-list-with-real-time-pnl-this-tab-should-be-the-default-active-tab-on-app-load",
+      "title": "Move the Dashboard tab content to include: the TotalCapitalSummary card, the PositionEntryForm, and the PositionDashboard (active positions list with real-time PnL). This tab should be the default active tab on app load.",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-move-the-ai-daily-trades-content-aidailytradessection-component-and-its-aidailytradessummary-header-into-the-ai-daily-trades-tab-this-tab-should-display-the-daily-performance-summary-banner-and-the-four-modality-trade-cards-scalping-day-trading-swing-trading-trend-following",
+      "title": "Move the AI Daily Trades content (AIDailyTradesSection component and its AIDailyTradesSummary header) into the 'AI Daily Trades' tab. This tab should display the daily performance summary banner and the four modality trade cards (Scalping, Day Trading, Swing Trading, Trend Following).",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-an-ai-insights-tab-that-consolidates-all-per-position-ai-analysis-features-sentimentgauge-trendpredictioncard-and-adjustmentsuggestioncard-components-group-these-by-active-position-showing-the-symbol-as-a-section-heading-if-no-positions-exist-display-an-empty-state-message-prompting-the-user-to-add-a-position-from-the-dashboard-tab",
+      "title": "Create an 'AI Insights' tab that consolidates all per-position AI analysis features: SentimentGauge, TrendPredictionCard, and AdjustmentSuggestionCard components. Group these by active position, showing the symbol as a section heading. If no positions exist, display an empty-state message prompting the user to add a position from the Dashboard tab.",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-risk-management-tab-that-contains-the-positionsizecalculator-portfolioexposuredashboard-and-scenariosimulator-components-arrange-them-in-a-logical-vertical-or-grid-layout-consistent-with-the-golden-themed-card-design",
+      "title": "Create a 'Risk Management' tab that contains the PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator components. Arrange them in a logical vertical or grid layout consistent with the golden-themed card design.",
+      "reqIds": [
+        "REQ-44"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -402,6 +466,18 @@
     {
       "id": "AR-16",
       "summary": "Add total capital/portfolio value input that persists and enables automatic real risk calculation across all positions",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "AI daily trades showcase area: AI executes one demo trade per trading style/modality using real Binance USDT-M Futures perpetual data to demonstrate app accuracy",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "Organize app into tabs: Dashboard, AI Daily Trades, AI Insights, Risk Management",
       "reqIds": [],
       "status": "pending"
     }

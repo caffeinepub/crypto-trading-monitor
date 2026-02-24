@@ -1,39 +1,37 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T11:30:49.862Z",
-  "summary": "The diff implements most of REQ-36: InstallButton.tsx is updated to always be visible (unless already installed), uses usePWAInstall hook for native prompt, and falls back to a new InstallInstructionsModal with browser-specific step-by-step instructions for Chrome, Safari, Edge, and Firefox. The button uses the golden theme. One acceptance criterion has a gap: the button still conditionally returns null when isInstalled is true, but the core requirement about not hiding when the install prompt is unavailable is satisfied.",
+  "generatedAt": "2026-02-24T13:36:36.290Z",
+  "summary": "The diff implements a tab-based navigation system for the app with four tabs (Dashboard, AI Daily Trades, AI Insights, Risk Management). Most requirements are well-addressed. Key gaps include: the AIDailyTradesSummary component is missing from the AI Daily Trades tab (REQ-42 AC), and the TotalCapitalSummary is moved into the Dashboard tab rather than remaining in the header across all tabs (REQ-40 AC mentions capital summary remains visible regardless of active tab).",
   "missing_requirements": [
     {
-      "id": "REQ-36",
-      "requirement": "The existing InstallButton.tsx component is updated or replaced so that it no longer conditionally hides itself when the install prompt is unavailable.",
-      "reason": "The updated InstallButton.tsx still returns null when isInstalled is true. The AC states the button should be 'always visible in the app header regardless of browser PWA support'. In standalone/installed mode the button is hidden entirely, which may conflict with the always-visible requirement.",
+      "id": "REQ-42",
+      "requirement": "AI Daily Trades tab should display the AIDailyTradesSummary header/banner showing total AI portfolio PnL, in addition to AIDailyTradesSection.",
+      "reason": "AIDailyTradesTab.tsx only renders AIDailyTradesSection and does not import or render AIDailyTradesSummary. The AC explicitly requires the AIDailyTradesSummary component showing total AI portfolio PnL.",
       "evidence": [
-        "frontend/src/components/InstallButton.tsx"
-      ]
-    }
-  ],
-  "hallucinated_features": [
-    {
-      "description": "Installation instructions are provided in Portuguese (Brazilian) rather than English",
-      "reason": "The BuildRequest does not specify a language for the manual installation instructions. All step-by-step text in InstallInstructionsModal.tsx is written in Portuguese, which was not requested.",
-      "evidence": [
-        "frontend/src/components/InstallInstructionsModal.tsx"
+        "frontend/src/components/AIDailyTradesTab.tsx"
       ]
     },
     {
-      "description": "Firefox (Android) browser guide included in the modal",
-      "reason": "REQ-36 specifies Chrome, Safari, and Edge as the required browsers for manual install instructions. A Firefox (Android) guide was added beyond what was requested.",
+      "id": "REQ-40",
+      "requirement": "The app header (logo, install button, capital summary) remains visible regardless of active tab.",
+      "reason": "TotalCapitalSummary is placed inside DashboardTab, meaning it is only visible on the Dashboard tab and not persistent in the header across all tabs. The AC states capital summary should remain visible regardless of active tab.",
       "evidence": [
-        "frontend/src/components/InstallInstructionsModal.tsx"
+        "frontend/src/components/DashboardTab.tsx",
+        "frontend/src/App.tsx"
       ]
     }
   ],
-  "confidence": 0.82,
+  "hallucinated_features": [],
+  "confidence": 0.8,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/InstallButton.tsx",
-    "frontend/src/components/InstallInstructionsModal.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AIDailyTradesTab.tsx",
+    "frontend/src/components/AIInsightsTab.tsx",
+    "frontend/src/components/DashboardTab.tsx",
+    "frontend/src/components/RiskManagementTab.tsx",
+    "frontend/src/components/TabNavigation.tsx",
     "project_state.json"
   ]
 }

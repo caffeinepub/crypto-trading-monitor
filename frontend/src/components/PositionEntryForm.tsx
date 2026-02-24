@@ -10,7 +10,7 @@ import { useBinancePairs } from '../hooks/useBinancePairs';
 import { Position, PositionType } from '../types/position';
 import { calculateTakeProfitLevels } from '../utils/takeProfitCalculator';
 import { calculateStopLoss } from '../utils/stopLossCalculator';
-import { fetchKlines } from '../services/binanceApi';
+import { fetchKlines, klinesToClosePrices } from '../services/binanceApi';
 import { Loader2, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -21,7 +21,7 @@ interface PositionEntryFormProps {
 
 export function PositionEntryForm({ onSubmit, onCancel }: PositionEntryFormProps) {
   const { data: pairs, isLoading: pairsLoading, error: pairsError } = useBinancePairs();
-  
+
   const [symbol, setSymbol] = useState('');
   const [positionType, setPositionType] = useState<PositionType>('Long');
   const [leverage, setLeverage] = useState(10);
@@ -33,9 +33,10 @@ export function PositionEntryForm({ onSubmit, onCancel }: PositionEntryFormProps
 
   const totalExposure = parseFloat(investmentAmount || '0') * leverage;
 
-  const filteredPairs = pairs?.filter(pair => 
-    pair.toLowerCase().includes(searchTerm.toLowerCase())
-  ).slice(0, 50) || [];
+  // pairs is string[] from useBinancePairs → fetchPerpetualPairs
+  const filteredPairs = (pairs ?? [])
+    .filter((pair: string) => pair.toLowerCase().includes(searchTerm.toLowerCase()))
+    .slice(0, 50);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,9 +63,10 @@ export function PositionEntryForm({ onSubmit, onCancel }: PositionEntryFormProps
     setIsSubmitting(true);
 
     try {
-      // Fetch historical data for technical analysis
-      const historicalPrices = await fetchKlines(symbol, '1h', 100);
-      
+      // Fetch historical klines and extract close prices for technical analysis
+      const klines = await fetchKlines(symbol, '1h', 100);
+      const historicalPrices = klinesToClosePrices(klines);
+
       if (historicalPrices.length === 0) {
         throw new Error('Unable to fetch historical data for analysis');
       }
@@ -157,7 +159,7 @@ export function PositionEntryForm({ onSubmit, onCancel }: PositionEntryFormProps
                   <SelectValue placeholder={pairsLoading ? 'Loading pairs...' : 'Select a trading pair'} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {filteredPairs.map((pair) => (
+                  {filteredPairs.map((pair: string) => (
                     <SelectItem key={pair} value={pair}>
                       {pair}
                     </SelectItem>

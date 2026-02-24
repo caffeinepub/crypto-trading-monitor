@@ -1,31 +1,25 @@
 import { useState } from 'react';
-import { PositionEntryForm } from './components/PositionEntryForm';
-import { PositionDashboard } from './components/PositionDashboard';
 import { InstallButton } from './components/InstallButton';
-import { PositionSizeCalculator } from './components/PositionSizeCalculator';
-import { PortfolioExposureDashboard } from './components/PortfolioExposureDashboard';
-import { ScenarioSimulator } from './components/ScenarioSimulator';
-import { TotalCapitalSummary } from './components/TotalCapitalSummary';
 import { usePositionStorage } from './hooks/usePositionStorage';
 import { usePositionMonitoring } from './hooks/usePositionMonitoring';
 import { usePortfolioExposure } from './hooks/usePortfolioExposure';
+import { TabNavigation, TabId } from './components/TabNavigation';
+import { DashboardTab } from './components/DashboardTab';
+import { AIDailyTradesTab } from './components/AIDailyTradesTab';
+import { AIInsightsTab } from './components/AIInsightsTab';
+import { RiskManagementTab } from './components/RiskManagementTab';
 import { SiX, SiGithub } from 'react-icons/si';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
 
 function App() {
   const { positions, addPosition, updatePosition, deletePosition } = usePositionStorage();
   const { data: positionsWithPrice = [] } = usePositionMonitoring(positions);
   const exposure = usePortfolioExposure(positionsWithPrice);
-  const [showForm, setShowForm] = useState(true);
-  const [calculatorOpen, setCalculatorOpen] = useState(false);
-  const [riskToolsOpen, setRiskToolsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Tech Background */}
-      <div 
+      <div
         className="fixed inset-0 z-0 opacity-[0.15] dark:opacity-[0.08]"
         style={{
           backgroundImage: 'url(/assets/generated/tech-bg-golden.dim_1920x1080.png)',
@@ -35,15 +29,16 @@ function App() {
           backgroundAttachment: 'fixed',
         }}
       />
-      
+
       {/* Gradient Overlay */}
       <div className="fixed inset-0 z-0 bg-gradient-to-br from-background via-background/95 to-primary/5" />
-      
+
       {/* Grid Pattern Overlay */}
       <div className="fixed inset-0 z-0 tech-pattern opacity-40" />
 
       {/* Content */}
       <div className="relative z-10">
+        {/* App Header */}
         <header className="border-b border-primary/20 bg-card/80 backdrop-blur-md sticky top-0 z-50 shadow-lg">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
@@ -86,71 +81,36 @@ function App() {
           </div>
         </header>
 
+        {/* Tab Navigation */}
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {/* Tab Content */}
         <main className="container mx-auto px-4 py-8">
-          {/* Total Capital Summary - Prominent placement at top */}
-          <div className="mb-6">
-            <TotalCapitalSummary positions={positionsWithPrice} />
-          </div>
+          {activeTab === 'dashboard' && (
+            <DashboardTab
+              positions={positions}
+              positionsWithPrice={positionsWithPrice}
+              onAddPosition={addPosition}
+              onUpdatePosition={updatePosition}
+              onDeletePosition={deletePosition}
+            />
+          )}
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-24 space-y-6">
-                {/* Position Size Calculator */}
-                <Collapsible open={calculatorOpen} onOpenChange={setCalculatorOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between border-primary/30 mb-2">
-                      <span>Position Size Calculator</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${calculatorOpen ? 'rotate-180' : ''}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <PositionSizeCalculator />
-                  </CollapsibleContent>
-                </Collapsible>
+          {activeTab === 'ai-daily-trades' && <AIDailyTradesTab />}
 
-                {/* Position Entry Form */}
-                <PositionEntryForm
-                  onSubmit={(position) => {
-                    addPosition(position);
-                    setShowForm(false);
-                  }}
-                  onCancel={() => setShowForm(false)}
-                />
-              </div>
-            </div>
+          {activeTab === 'ai-insights' && (
+            <AIInsightsTab
+              positions={positionsWithPrice}
+              onUpdatePosition={updatePosition}
+            />
+          )}
 
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Portfolio Exposure Dashboard */}
-              {positionsWithPrice.length > 0 && (
-                <PortfolioExposureDashboard exposure={exposure} positions={positionsWithPrice} />
-              )}
-
-              {/* Risk Management Tools */}
-              {positionsWithPrice.length > 0 && (
-                <Collapsible open={riskToolsOpen} onOpenChange={setRiskToolsOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between border-primary/30">
-                      <span>Scenario Simulator</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${riskToolsOpen ? 'rotate-180' : ''}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                    <ScenarioSimulator positions={positionsWithPrice} />
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-
-              {/* Position Dashboard */}
-              <PositionDashboard
-                positions={positions}
-                onUpdate={updatePosition}
-                onDelete={deletePosition}
-                onAddNew={() => setShowForm(true)}
-              />
-            </div>
-          </div>
+          {activeTab === 'risk-management' && (
+            <RiskManagementTab
+              positions={positionsWithPrice}
+              exposure={exposure}
+            />
+          )}
         </main>
 
         <footer className="border-t border-primary/20 bg-card/60 backdrop-blur-md mt-16">

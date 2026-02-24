@@ -1,27 +1,78 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T11:30:49.866Z",
+  "generatedAt": "2026-02-24T13:36:36.295Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 5,
+    "implemented": 5,
     "items": [
       {
-        "id": "REQ-36",
-        "summary": "Replace or supplement the existing PWA install button (InstallButton.tsx) with a always-visible 'Download App' button in the app header that does not depend on the beforeinstallprompt event. When clicked, it should trigger a direct download of the PWA as a web app by: (1) still attempting the native browser install prompt if available via the existing usePWAInstall hook, and (2) as a fallback, showing a modal or tooltip with clear step-by-step instructions for manually installing the app on Chrome (Add to Home Screen via browser menu), Safari (Share → Add to Home Screen), and other major browsers. The button must always be visible regardless of browser install prompt availability.",
+        "id": "REQ-40",
+        "summary": "Refactor the main App.tsx layout to use a tab-based navigation system with four tabs: 'Dashboard', 'AI Daily Trades', 'AI Insights', and 'Risk Management'. The header (logo, Install/Download App button) must remain visible at all times above the tab bar. Only the content of the active tab should be rendered (or kept mounted but hidden) to avoid layout shifts.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/InstallButton.tsx",
-          "frontend/src/components/InstallInstructionsModal.tsx",
+          "frontend/src/components/TabNavigation.tsx",
           "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/InstallButton.tsx",
-          "frontend/src/components/InstallInstructionsModal.tsx"
+          "frontend/src/components/TabNavigation.tsx",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-41",
+        "summary": "Move the Dashboard tab content to include: the TotalCapitalSummary card, the PositionEntryForm, and the PositionDashboard (active positions list with real-time PnL). This tab should be the default active tab on app load.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/DashboardTab.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/DashboardTab.tsx",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-42",
+        "summary": "Move the AI Daily Trades content (AIDailyTradesSection component and its AIDailyTradesSummary header) into the 'AI Daily Trades' tab. This tab should display the daily performance summary banner and the four modality trade cards (Scalping, Day Trading, Swing Trading, Trend Following).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/AIDailyTradesTab.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/AIDailyTradesTab.tsx",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-43",
+        "summary": "Create an 'AI Insights' tab that consolidates all per-position AI analysis features: SentimentGauge, TrendPredictionCard, and AdjustmentSuggestionCard components. Group these by active position, showing the symbol as a section heading. If no positions exist, display an empty-state message prompting the user to add a position from the Dashboard tab.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/AIInsightsTab.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/AIInsightsTab.tsx",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-44",
+        "summary": "Create a 'Risk Management' tab that contains the PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator components. Arrange them in a logical vertical or grid layout consistent with the golden-themed card design.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/RiskManagementTab.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/RiskManagementTab.tsx",
+          "frontend/src/App.tsx"
         ]
       }
     ]
@@ -31,8 +82,12 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/InstallButton.tsx",
-    "frontend/src/components/InstallInstructionsModal.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AIDailyTradesTab.tsx",
+    "frontend/src/components/AIInsightsTab.tsx",
+    "frontend/src/components/DashboardTab.tsx",
+    "frontend/src/components/RiskManagementTab.tsx",
+    "frontend/src/components/TabNavigation.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

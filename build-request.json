@@ -1,40 +1,119 @@
 {
   "kind": "build_request",
-  "title": "Add Direct APK/PWA Download Button to Force App Installation",
+  "title": "Organize app into tabbed navigation: Dashboard, AI Daily Trades, AI Insights, Risk Management",
   "projectName": "Crypto Position Monitor",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-36",
-      "text": "Replace or supplement the existing PWA install button (InstallButton.tsx) with a always-visible 'Download App' button in the app header that does not depend on the beforeinstallprompt event. When clicked, it should trigger a direct download of the PWA as a web app by: (1) still attempting the native browser install prompt if available via the existing usePWAInstall hook, and (2) as a fallback, showing a modal or tooltip with clear step-by-step instructions for manually installing the app on Chrome (Add to Home Screen via browser menu), Safari (Share → Add to Home Screen), and other major browsers. The button must always be visible regardless of browser install prompt availability.",
+      "id": "REQ-40",
+      "text": "Refactor the main App.tsx layout to use a tab-based navigation system with four tabs: 'Dashboard', 'AI Daily Trades', 'AI Insights', and 'Risk Management'. The header (logo, Install/Download App button) must remain visible at all times above the tab bar. Only the content of the active tab should be rendered (or kept mounted but hidden) to avoid layout shifts.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-recent-6"
         ],
         "quotes": [
-          "Ainda nao consigo instalar o aplicativo como ...  pwa completo. Pode adicionar um botao de baixar diretamente no aplicativo.? Para forçar o download"
+          "Devemos separar por abas",
+          "Sugestão de estrutura de abas"
         ]
       },
       "acceptanceCriteria": [
-        "A 'Download App' / 'Install App' button is always visible in the app header regardless of browser PWA support.",
-        "If the browser supports beforeinstallprompt, clicking the button triggers the native install prompt.",
-        "If the native install prompt is not available, clicking the button opens a modal or popover with manual installation instructions for Chrome, Safari, and Edge.",
-        "The manual install instructions include clear step-by-step guidance with browser-specific icons or labels.",
-        "The button styling is consistent with the golden theme and does not break the header layout on mobile or desktop.",
-        "The existing InstallButton.tsx component is updated or replaced so that it no longer conditionally hides itself when the install prompt is unavailable."
+        "A persistent tab bar is displayed below the app header with four tabs: Dashboard, AI Daily Trades, AI Insights, Risk Management",
+        "Clicking each tab switches the main content area to show only that tab's content",
+        "The app header (logo, install button, capital summary) remains visible regardless of active tab",
+        "Tab bar styling is consistent with the existing golden-themed design system",
+        "Active tab is clearly highlighted using the golden accent color",
+        "Tab navigation is responsive and works correctly on both mobile and desktop"
+      ]
+    },
+    {
+      "id": "REQ-41",
+      "text": "Move the Dashboard tab content to include: the TotalCapitalSummary card, the PositionEntryForm, and the PositionDashboard (active positions list with real-time PnL). This tab should be the default active tab on app load.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent-6"
+        ],
+        "quotes": [
+          "Dashboard -- Posições ativas, capital total e resumo do portfólio"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Dashboard tab is selected by default when the app loads",
+        "Dashboard tab displays the TotalCapitalSummary card at the top",
+        "Dashboard tab displays the PositionEntryForm for adding new positions",
+        "Dashboard tab displays the PositionDashboard with all active positions and real-time updates",
+        "No AI Insights or Risk Management components are shown in this tab"
+      ]
+    },
+    {
+      "id": "REQ-42",
+      "text": "Move the AI Daily Trades content (AIDailyTradesSection component and its AIDailyTradesSummary header) into the 'AI Daily Trades' tab. This tab should display the daily performance summary banner and the four modality trade cards (Scalping, Day Trading, Swing Trading, Trend Following).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent-6"
+        ],
+        "quotes": [
+          "AI Daily Trades -- Os trades diários automáticos por modalidade"
+        ]
+      },
+      "acceptanceCriteria": [
+        "AI Daily Trades tab renders the AIDailyTradesSummary component showing total AI portfolio PnL",
+        "AI Daily Trades tab renders the AIDailyTradesSection with all four modality trade cards",
+        "Trade cards retain all existing functionality: live price updates, PnL, TP progress, SL warnings, AI reasoning"
+      ]
+    },
+    {
+      "id": "REQ-43",
+      "text": "Create an 'AI Insights' tab that consolidates all per-position AI analysis features: SentimentGauge, TrendPredictionCard, and AdjustmentSuggestionCard components. Group these by active position, showing the symbol as a section heading. If no positions exist, display an empty-state message prompting the user to add a position from the Dashboard tab.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent-6"
+        ],
+        "quotes": [
+          "AI Insights -- Sentimento de mercado, previsões de tendência e sugestões de ajuste"
+        ]
+      },
+      "acceptanceCriteria": [
+        "AI Insights tab displays sentiment, trend prediction, and adjustment suggestion cards for each active position",
+        "Each position's insights are grouped under a heading showing the asset symbol",
+        "When no positions are tracked, an empty-state message is shown with a link/prompt to add a position",
+        "All existing hook logic (useSentimentAnalysis, useTrendPrediction, useAdjustmentSuggestions) continues to work correctly in this tab"
+      ]
+    },
+    {
+      "id": "REQ-44",
+      "text": "Create a 'Risk Management' tab that contains the PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator components. Arrange them in a logical vertical or grid layout consistent with the golden-themed card design.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent-6"
+        ],
+        "quotes": [
+          "Risk Management -- Calculadora de posição, exposição do portfólio e simulador de cenários"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Risk Management tab displays the PositionSizeCalculator card",
+        "Risk Management tab displays the PortfolioExposureDashboard card",
+        "Risk Management tab displays the ScenarioSimulator card",
+        "All three tools retain their existing functionality including total capital integration",
+        "Layout is responsive on mobile and desktop with appropriate spacing"
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
-    "Reuse the existing usePWAInstall hook for native prompt detection; do not duplicate that logic.",
-    "Keep the existing golden color theme consistent for any new UI elements."
+    "Do not modify any files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
+    "Preserve all existing component logic and hook behavior; only reorganize their placement in the layout",
+    "Maintain the golden color theme and existing visual design system throughout all tabs"
   ],
   "nonGoals": [
-    "Do not generate or distribute a native Android APK or iOS IPA file.",
-    "Do not change the service worker or manifest configuration.",
-    "Do not add any backend changes."
+    "Adding new AI features or new risk management tools beyond reorganization",
+    "Changing any existing component's internal logic or styling",
+    "Implementing lazy loading or code splitting for tab content",
+    "Adding animations or transitions between tabs beyond simple show/hide"
   ],
   "imageRequirements": {
     "required": [],

@@ -5,7 +5,7 @@ import { calculatePnL } from '../utils/pnlCalculations';
 
 export function usePositionMonitoring(positions: Position[]) {
   return useQuery({
-    queryKey: ['position-monitoring', positions.map(p => p.id).join(',')],
+    queryKey: ['position-monitoring', positions.map((p) => p.id).join(',')],
     queryFn: async (): Promise<PositionWithPrice[]> => {
       const pricePromises = positions.map(async (position) => {
         try {
@@ -48,7 +48,7 @@ export function usePositionMonitoring(positions: Position[]) {
       return Promise.all(pricePromises);
     },
     enabled: positions.length > 0,
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000,
     staleTime: 3000,
   });
 }

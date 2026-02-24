@@ -1,34 +1,118 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add Direct APK/PWA Download Button to Force App Installation",
+  "title": "Organize app into tabbed navigation: Dashboard, AI Daily Trades, AI Insights, Risk Management",
   "requirements": [
     {
-      "id": "REQ-36",
-      "summary": "Replace or supplement the existing PWA install button with an always-visible 'Download App' button that provides both native install prompt support and fallback manual installation instructions for all major browsers",
+      "id": "REQ-40",
+      "summary": "Refactor main App.tsx layout to use tab-based navigation with four tabs while preserving header visibility",
       "acceptanceCriteria": [
-        "A 'Download App' / 'Install App' button is always visible in the app header regardless of browser PWA support.",
-        "If the browser supports beforeinstallprompt, clicking the button triggers the native install prompt.",
-        "If the native install prompt is not available, clicking the button opens a modal or popover with manual installation instructions for Chrome, Safari, and Edge.",
-        "The manual install instructions include clear step-by-step guidance with browser-specific icons or labels.",
-        "The button styling is consistent with the golden theme and does not break the header layout on mobile or desktop.",
-        "The existing InstallButton.tsx component is updated or replaced so that it no longer conditionally hides itself when the install prompt is unavailable."
+        "A persistent tab bar is displayed below the app header with four tabs: Dashboard, AI Daily Trades, AI Insights, Risk Management",
+        "Clicking each tab switches the main content area to show only that tab's content",
+        "The app header (logo, install button, capital summary) remains visible regardless of active tab",
+        "Tab bar styling is consistent with the existing golden-themed design system",
+        "Active tab is clearly highlighted using the golden accent color",
+        "Tab navigation is responsive and works correctly on both mobile and desktop"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/InstallButton.tsx",
-          "operation": "modify",
-          "description": "Remove the conditional rendering that hides the button when isInstallable is false. Update the button to always render in the UI. When clicked, attempt to trigger the native install prompt via usePWAInstall hook; if the prompt fails or is unavailable, programmatically open a modal dialog with manual installation instructions. Add state management for controlling the instruction modal visibility. Ensure the button maintains golden theme styling and responsive layout for mobile and desktop."
-        },
-        {
-          "path": "frontend/src/components/InstallInstructionsModal.tsx",
+          "path": "frontend/src/components/TabNavigation.tsx",
           "operation": "create",
-          "description": "Create a modal component that displays browser-specific manual PWA installation instructions. Include step-by-step guides for Chrome (Add to Home Screen via browser menu), Safari (Share button → Add to Home Screen), Edge (Install app icon in address bar), and Firefox (Home screen icon in menu). Use clear headings, numbered steps, and consider adding browser logos or icons for visual clarity. The modal should have a close button and be dismissible by clicking outside. Style consistently with the golden theme using Tailwind and existing design tokens. Accept open/onClose props for external control."
+          "description": "Create a TabNavigation component that renders a horizontal tab bar with four tabs (Dashboard, AI Daily Trades, AI Insights, Risk Management). The component accepts activeTab and onTabChange props, applies golden-themed styling from index.css using Tailwind classes, highlights the active tab with hsl(var(--primary)) background, and ensures responsive behavior with proper touch targets for mobile. Use the shadcn/ui Button component as the base for tab buttons."
         },
         {
           "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Ensure the InstallButton component remains wired into the header section of the app layout. Verify that the button's always-visible behavior does not break the existing sticky header layout on mobile or desktop viewports. No changes to the wolf/crypto logo or other header elements are required unless layout adjustments are needed to accommodate the updated button."
+          "description": "Refactor App.tsx to introduce tab-based navigation. Add useState hook to track activeTab (default: 'dashboard'). Preserve the existing header structure (logo, InstallButton, TotalCapitalSummary) at the top. Below the header, render the TabNavigation component. Below the tab bar, conditionally render content based on activeTab value using a switch/conditional block. Wrap each tab's content in a container div with consistent padding. Remove the current linear layout of all components and organize them into their respective tab sections as specified in REQ-41 through REQ-44."
+        }
+      ]
+    },
+    {
+      "id": "REQ-41",
+      "summary": "Move Dashboard content (TotalCapitalSummary, PositionEntryForm, PositionDashboard) into Dashboard tab as default",
+      "acceptanceCriteria": [
+        "Dashboard tab is selected by default when the app loads",
+        "Dashboard tab displays the TotalCapitalSummary card at the top",
+        "Dashboard tab displays the PositionEntryForm for adding new positions",
+        "Dashboard tab displays the PositionDashboard with all active positions and real-time updates",
+        "No AI Insights or Risk Management components are shown in this tab"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/DashboardTab.tsx",
+          "operation": "create",
+          "description": "Create a DashboardTab component that renders the Dashboard tab content. Import and compose TotalCapitalSummary, PositionEntryForm, and PositionDashboard components in a vertical layout with appropriate spacing (space-y-6). Accept positions and onPositionsChange props to pass through to child components. Use the golden-themed card styling consistent with existing components. Ensure the layout is responsive and works on both mobile and desktop viewports."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "In the tab content rendering section, when activeTab is 'dashboard', render the DashboardTab component. Pass the positions array and setPositions handler as props. Ensure TotalCapitalSummary is rendered both in the persistent header and within the Dashboard tab content for proper capital overview context. Keep all existing state management (usePositionStorage, usePositionMonitoring, useTotalCapital hooks) intact."
+        }
+      ]
+    },
+    {
+      "id": "REQ-42",
+      "summary": "Move AI Daily Trades content (AIDailyTradesSummary and AIDailyTradesSection) into dedicated tab",
+      "acceptanceCriteria": [
+        "AI Daily Trades tab renders the AIDailyTradesSummary component showing total AI portfolio PnL",
+        "AI Daily Trades tab renders the AIDailyTradesSection with all four modality trade cards",
+        "Trade cards retain all existing functionality: live price updates, PnL, TP progress, SL warnings, AI reasoning"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AIDailyTradesTab.tsx",
+          "operation": "create",
+          "description": "Create an AIDailyTradesTab component that renders the AI Daily Trades tab content. Import and render AIDailyTradesSummary followed by AIDailyTradesSection in a vertical layout with appropriate spacing (space-y-6). The component should use the same data flow as the current implementation in App.tsx, accepting no props and letting child components manage their own data via useAITradeGeneration and useAITradeMonitoring hooks. Maintain the golden-themed styling and ensure responsive layout."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "In the tab content rendering section, when activeTab is 'ai-daily-trades', render the AIDailyTradesTab component. Remove the AIDailyTradesSummary and AIDailyTradesSection components from the main App layout since they are now encapsulated in the dedicated tab component. Ensure all existing hook dependencies remain unchanged."
+        }
+      ]
+    },
+    {
+      "id": "REQ-43",
+      "summary": "Create AI Insights tab consolidating per-position AI analysis (SentimentGauge, TrendPredictionCard, AdjustmentSuggestionCard)",
+      "acceptanceCriteria": [
+        "AI Insights tab displays sentiment, trend prediction, and adjustment suggestion cards for each active position",
+        "Each position's insights are grouped under a heading showing the asset symbol",
+        "When no positions are tracked, an empty-state message is shown with a link/prompt to add a position",
+        "All existing hook logic (useSentimentAnalysis, useTrendPrediction, useAdjustmentSuggestions) continues to work correctly in this tab"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AIInsightsTab.tsx",
+          "operation": "create",
+          "description": "Create an AIInsightsTab component that renders AI analysis for each active position. Accept positions array as props. If positions array is empty, render an empty-state card with a message like 'No positions to analyze. Add a position from the Dashboard tab to see AI insights.' using the golden-themed card styling. For each position, render a section with the symbol as a heading (text-xl font-bold text-primary), followed by a grid or vertical stack containing SentimentGauge, TrendPredictionCard, and AdjustmentSuggestionCard components, each receiving the position's symbol prop. Use space-y-8 between position sections and space-y-4 within each section. Ensure responsive layout that stacks on mobile and may show side-by-side cards on desktop."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "In the tab content rendering section, when activeTab is 'ai-insights', render the AIInsightsTab component and pass the positions array as props. Remove any existing per-position AI components (SentimentGauge, TrendPredictionCard, AdjustmentSuggestionCard) from the PositionCard rendering if they were previously embedded there, since they are now centralized in the AI Insights tab. Maintain all state and hook logic unchanged."
+        }
+      ]
+    },
+    {
+      "id": "REQ-44",
+      "summary": "Create Risk Management tab containing PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator",
+      "acceptanceCriteria": [
+        "Risk Management tab displays the PositionSizeCalculator card",
+        "Risk Management tab displays the PortfolioExposureDashboard card",
+        "Risk Management tab displays the ScenarioSimulator card",
+        "All three tools retain their existing functionality including total capital integration",
+        "Layout is responsive on mobile and desktop with appropriate spacing"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/RiskManagementTab.tsx",
+          "operation": "create",
+          "description": "Create a RiskManagementTab component that renders the Risk Management tab content. Import and compose PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator components in a vertical layout with space-y-6. Accept positions and totalCapital props to pass through to PortfolioExposureDashboard and ScenarioSimulator. PositionSizeCalculator may optionally receive a callback if integration with PositionEntryForm is needed across tabs (though that form is in Dashboard tab). Use the golden-themed card styling consistent with existing components and ensure responsive layout."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "In the tab content rendering section, when activeTab is 'risk-management', render the RiskManagementTab component and pass positions and totalCapital as props. Remove any existing PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator components from the main App layout since they are now encapsulated in the dedicated tab. Ensure all state (positions, totalCapital) remains accessible to this tab component. Keep all hook logic unchanged."
         }
       ]
     }
