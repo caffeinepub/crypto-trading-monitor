@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 29,
+  "projectStateVersion": 35,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -16,9 +16,11 @@
   ],
   "known_issues": [
     "PWA installation via beforeinstallprompt not working reliably; user requests a direct download/install button to force the process",
-    "AI trades hitting TP1/TP2/TP3 are not executing fictitious orders or advancing risk management steps (e.g., moving SL to breakeven after TP1)"
+    "AI trades hitting TP1/TP2/TP3 are not executing fictitious orders or advancing risk management steps (e.g., moving SL to breakeven after TP1)",
+    "Settings/API key gear icon button in the header is unresponsive when clicked — the BinanceCredentialsPanel settings section does not open",
+    "Enabling 'Live Trade Mode' causes the application to freeze/hang — the only recovery is closing the app; orders are not being sent to Binance"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-create-a-manual-position-entry-form-with-fields-for-asset-selection-dropdown-autocomplete-validated-against-binance-usd-m-futures-perpetual-pairs-position-type-long-short-selector-leverage-1x-to-125x-numeric-input-entry-price-numeric-input-and-investment-amount-in-usd-numeric-input-calculate-and-prominently-display-total-exposure-as-investment-leverage",
@@ -475,6 +477,78 @@
         "REQ-57"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-create-a-binancecredentials-settings-panel-component-frontend-src-components-binancecredentialspanel-tsx-that-allows-users-to-input-and-save-their-binance-futures-api-key-and-secret-store-both-values-in-localstorage-under-the-keys-binance-api-key-and-binance-api-secret-display-a-masked-input-for-the-secret-field-password-type-include-a-save-credentials-button-with-success-error-feedback-a-clear-credentials-button-to-remove-stored-keys-and-a-warning-notice-that-keys-are-stored-locally-in-the-browser-and-never-sent-to-any-server-add-a-connection-test-button-that-calls-the-binance-futures-account-endpoint-https-fapi-binance-com-fapi-v2-account-with-the-stored-credentials-to-verify-they-are-valid-and-show-a-clear-connected-or-invalid-credentials-status-badge",
+      "title": "Create a BinanceCredentials settings panel component (frontend/src/components/BinanceCredentialsPanel.tsx) that allows users to input and save their Binance Futures API Key and Secret. Store both values in localStorage under the keys 'binance_api_key' and 'binance_api_secret'. Display a masked input for the Secret field (password type). Include a 'Save Credentials' button with success/error feedback, a 'Clear Credentials' button to remove stored keys, and a warning notice that keys are stored locally in the browser and never sent to any server. Add a connection test button that calls the Binance Futures account endpoint (https://fapi.binance.com/fapi/v2/account) with the stored credentials to verify they are valid, and show a clear 'Connected' or 'Invalid credentials' status badge.",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-frontend-utility-module-frontend-src-utils-binanceauth-ts-that-implements-hmac-sha256-request-signing-for-the-binance-futures-authenticated-api-the-module-must-expose-1-a-signquery-function-that-accepts-a-query-parameter-string-and-the-api-secret-appends-a-timestamp-parameter-and-returns-the-full-signed-query-string-including-the-computed-hmac-sha256-signature-parameter-2-a-getstoredcredentials-function-that-retrieves-binance-api-key-and-binance-api-secret-from-localstorage-3-a-hascredentials-function-that-returns-true-only-if-both-keys-are-present-and-non-empty-and-4-an-authenticatedfetch-helper-that-builds-a-signed-request-attaches-the-x-mbx-apikey-header-and-returns-the-parsed-json-response-or-throws-a-typed-binanceapierror",
+      "title": "Create a frontend utility module (frontend/src/utils/binanceAuth.ts) that implements HMAC-SHA256 request signing for the Binance Futures authenticated API. The module must expose: (1) a 'signQuery' function that accepts a query parameter string and the API Secret, appends a 'timestamp' parameter, and returns the full signed query string including the computed HMAC-SHA256 'signature' parameter; (2) a 'getStoredCredentials' function that retrieves 'binance_api_key' and 'binance_api_secret' from localStorage; (3) a 'hasCredentials' function that returns true only if both keys are present and non-empty; and (4) an 'authenticatedFetch' helper that builds a signed request, attaches the 'X-MBX-APIKEY' header, and returns the parsed JSON response or throws a typed BinanceApiError.",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-frontend-service-module-frontend-src-services-binanceorderservice-ts-that-uses-the-binanceauth-utility-to-place-real-orders-on-binance-usd-m-futures-https-fapi-binance-com-fapi-v1-order-expose-the-following-functions-1-placemarketorder-symbol-side-quantity-places-a-market-order-2-placelimitorder-symbol-side-quantity-price-places-a-limit-order-with-timeinforce-gtc-3-placestopmarketorder-symbol-side-quantity-stopprice-places-a-stop-market-order-4-placetakeprofitmarketorder-symbol-side-quantity-stopprice-places-a-take-profit-market-order-5-cancelorder-symbol-orderid-cancels-an-existing-order-and-6-getopenorders-symbol-retrieves-open-orders-for-a-symbol-all-functions-must-call-authenticatedfetch-from-binanceauth-ts-if-credentials-are-missing-throw-a-descriptive-error-instead-of-making-the-network-call",
+      "title": "Create a frontend service module (frontend/src/services/binanceOrderService.ts) that uses the binanceAuth utility to place real orders on Binance USD-M Futures (https://fapi.binance.com/fapi/v1/order). Expose the following functions: (1) 'placeMarketOrder(symbol, side, quantity)' — places a MARKET order; (2) 'placeLimitOrder(symbol, side, quantity, price)' — places a LIMIT order with timeInForce GTC; (3) 'placeStopMarketOrder(symbol, side, quantity, stopPrice)' — places a STOP_MARKET order; (4) 'placeTakeProfitMarketOrder(symbol, side, quantity, stopPrice)' — places a TAKE_PROFIT_MARKET order; (5) 'cancelOrder(symbol, orderId)' — cancels an existing order; and (6) 'getOpenOrders(symbol)' — retrieves open orders for a symbol. All functions must call authenticatedFetch from binanceAuth.ts. If credentials are missing, throw a descriptive error instead of making the network call.",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-live-trading-mode-toggle-to-the-application-store-the-toggle-state-in-localstorage-under-the-key-live-trading-enabled-when-live-trading-mode-is-off-default-the-existing-fictitious-simulated-order-logic-continues-unchanged-when-live-trading-mode-is-on-and-valid-binance-credentials-are-stored-actual-order-calls-via-binanceorderservice-ts-are-made-when-a-a-new-position-is-added-place-a-market-entry-order-and-set-tp-sl-orders-take-profit-market-and-stop-market-b-an-ai-trade-is-triggered-place-the-corresponding-entry-and-tp-sl-orders-on-binance-futures-display-a-clearly-visible-amber-badge-or-banner-in-the-header-when-live-trading-mode-is-active-to-prevent-accidental-real-trades",
+      "title": "Add a 'Live Trading' mode toggle to the application. Store the toggle state in localStorage under the key 'live_trading_enabled'. When Live Trading mode is OFF (default), the existing fictitious/simulated order logic continues unchanged. When Live Trading mode is ON and valid Binance credentials are stored, actual order calls via binanceOrderService.ts are made when: (a) a new position is added — place a market entry order and set TP/SL orders (TAKE_PROFIT_MARKET and STOP_MARKET); (b) an AI trade is triggered — place the corresponding entry and TP/SL orders on Binance Futures. Display a clearly visible amber badge or banner in the header when Live Trading mode is active to prevent accidental real trades.",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-integrate-the-binancecredentialspanel-and-the-live-trading-toggle-into-the-existing-ui-add-a-settings-section-accessible-from-the-app-header-e-g-a-gear-icon-button-inside-the-settings-section-render-the-binancecredentialspanel-and-the-live-trading-mode-toggle-the-settings-section-must-be-consistent-with-the-existing-golden-themed-card-design-also-add-a-small-credential-status-indicator-e-g-api-connected-or-no-api-key-visible-in-the-app-header-at-all-times-so-the-user-can-immediately-see-whether-their-binance-credentials-are-configured",
+      "title": "Integrate the BinanceCredentialsPanel and the Live Trading toggle into the existing UI. Add a 'Settings' section accessible from the app header (e.g., a gear icon button). Inside the Settings section, render the BinanceCredentialsPanel and the Live Trading mode toggle. The Settings section must be consistent with the existing golden-themed card design. Also add a small credential status indicator (e.g., 'API Connected' or 'No API Key') visible in the app header at all times, so the user can immediately see whether their Binance credentials are configured.",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-settings-gear-icon-button-in-the-app-header-app-tsx-so-that-clicking-it-reliably-opens-the-settingsdialog-modal-investigate-and-resolve-the-broken-click-handler-ensure-the-button-s-onclick-is-correctly-wired-to-the-dialog-s-open-state-that-no-z-index-pointer-events-or-event-propagation-issues-are-blocking-the-interaction-and-that-the-settingsdialog-renders-and-is-visible-when-triggered",
+      "title": "Fix the Settings gear icon button in the app header (App.tsx) so that clicking it reliably opens the SettingsDialog modal. Investigate and resolve the broken click handler — ensure the button's onClick is correctly wired to the dialog's open state, that no z-index, pointer-events, or event-propagation issues are blocking the interaction, and that the SettingsDialog renders and is visible when triggered.",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-live-trading-mode-toggle-in-livetradingtoggle-tsx-and-uselivetradingmode-ts-so-that-enabling-it-does-not-cause-the-application-to-freeze-or-become-unresponsive-the-freeze-likely-originates-from-a-synchronous-blocking-operation-an-infinite-re-render-loop-triggered-by-state-changes-when-live-trading-is-activated-or-an-unhandled-promise-rejection-in-the-order-placement-flow-that-locks-the-ui-audit-the-toggle-activation-path-including-the-confirmation-dialog-credential-validation-localstorage-write-and-any-reactive-effects-that-fire-on-live-trading-state-change-and-ensure-all-async-operations-are-non-blocking-with-proper-error-boundaries",
+      "title": "Fix the Live Trading mode toggle in LiveTradingToggle.tsx and useLiveTradingMode.ts so that enabling it does not cause the application to freeze or become unresponsive. The freeze likely originates from a synchronous blocking operation, an infinite re-render loop triggered by state changes when live trading is activated, or an unhandled promise rejection in the order placement flow that locks the UI. Audit the toggle activation path — including the confirmation dialog, credential validation, localStorage write, and any reactive effects that fire on live trading state change — and ensure all async operations are non-blocking with proper error boundaries.",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-order-execution-flow-in-usepositionstorage-ts-useaitradegeneration-ts-and-binanceorderservice-ts-so-that-when-live-trading-mode-is-on-and-valid-binance-credentials-are-present-real-orders-are-actually-sent-to-binance-futures-https-fapi-binance-com-fapi-v1-order-ensure-all-order-calls-market-entry-take-profit-market-stop-market-are-properly-awaited-errors-are-caught-per-order-without-aborting-the-entire-flow-and-the-result-success-or-failure-is-surfaced-to-the-user-via-a-toast-notification-if-an-order-fails-log-the-error-and-continue-do-not-let-a-single-order-failure-block-position-creation-or-ai-trade-activation",
+      "title": "Fix the order execution flow in usePositionStorage.ts, useAITradeGeneration.ts, and binanceOrderService.ts so that when Live Trading mode is ON and valid Binance credentials are present, real orders are actually sent to Binance Futures (https://fapi.binance.com/fapi/v1/order). Ensure all order calls (market entry, TAKE_PROFIT_MARKET, STOP_MARKET) are properly awaited, errors are caught per-order without aborting the entire flow, and the result (success or failure) is surfaced to the user via a toast notification. If an order fails, log the error and continue — do not let a single order failure block position creation or AI trade activation.",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-all-useeffect-and-react-query-hooks-that-listen-to-the-live-trading-mode-state-live-trading-enabled-in-localstorage-including-uselivetradingmode-ts-usepositionstorage-ts-and-useaitradegeneration-ts-and-remove-or-fix-any-dependency-array-entries-or-event-listener-registrations-that-could-cause-infinite-loops-or-cascading-re-renders-when-live-trading-is-toggled-ensure-custom-window-event-listeners-for-live-trading-state-changes-are-registered-once-and-properly-cleaned-up-on-unmount",
+      "title": "Audit all useEffect and React Query hooks that listen to the live trading mode state (live_trading_enabled in localStorage) — including useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts — and remove or fix any dependency array entries or event listener registrations that could cause infinite loops or cascading re-renders when live trading is toggled. Ensure custom window event listeners for live trading state changes are registered once and properly cleaned up on unmount.",
+      "reqIds": [
+        "REQ-66"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -607,6 +681,12 @@
     {
       "id": "AR-22",
       "summary": "AI should recognize market reversals and be able to reverse trade direction or close positions early to protect accumulated profits before they erode",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-23",
+      "summary": "Integrate Binance authenticated API for real order execution: allow users to input their API Key and Secret (stored in localStorage), implement HMAC-SHA256 signing, and send real orders to Binance Futures when TP/SL levels are hit",
       "reqIds": [],
       "status": "pending"
     }

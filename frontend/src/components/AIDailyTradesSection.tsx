@@ -21,11 +21,12 @@ export function AIDailyTradesSection() {
     isFetching: isRefetching,
   } = useAITradeGeneration();
 
-  const {
-    data: tradesWithPrices,
-    dataUpdatedAt,
-    isFetching: isPriceFetching,
-  } = useAITradeMonitoring(trades);
+  const monitoringQuery = useAITradeMonitoring(trades);
+
+  // useAITradeMonitoring returns a UseQueryResult — extract fields safely
+  const tradesWithPrices = monitoringQuery.data;
+  const dataUpdatedAt = monitoringQuery.dataUpdatedAt;
+  const isPriceFetching = monitoringQuery.isFetching;
 
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
@@ -144,7 +145,7 @@ export function AIDailyTradesSection() {
             </>
           )}
 
-          {/* Partial results during generation */}
+          {/* Empty state */}
           {!isGenerating && !generationError && (!tradesWithPrices || tradesWithPrices.length === 0) && (
             <div className="rounded-xl border border-border/50 bg-card/60 p-6 text-center">
               <Bot className="w-8 h-8 text-muted-foreground mx-auto mb-2" />

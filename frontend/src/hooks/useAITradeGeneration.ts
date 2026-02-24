@@ -7,36 +7,36 @@ import { getTotalCapital } from '../utils/totalCapitalStorage';
 const MODALITIES: TradingModality[] = ['Scalping', 'DayTrading', 'SwingTrading', 'TrendFollowing'];
 const DEFAULT_INVESTMENT_PER_MODALITY = 1000;
 
+function getTodayUTC(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 export function useAITradeGeneration() {
   const { getTrades, saveTrades, checkAndResetDaily } = useAITradeStorage();
 
-  // Read total capital to use as query key dependency so trades regenerate when capital changes
-  const totalCapital = getTotalCapital();
+  const rawCapital = getTotalCapital();
+  const totalCapital = rawCapital !== null ? rawCapital : 0;
   const investmentPerModality =
-    totalCapital !== null && totalCapital > 0
-      ? totalCapital / 4
-      : DEFAULT_INVESTMENT_PER_MODALITY;
+    totalCapital > 0 ? totalCapital / 4 : DEFAULT_INVESTMENT_PER_MODALITY;
 
   return useQuery<AITrade[]>({
-    queryKey: ['ai-daily-trades', totalCapital],
+    queryKey: ['ai-daily-trades', getTodayUTC(), totalCapital],
     queryFn: async () => {
-      // Check if we need a full daily reset
       const needsGeneration = checkAndResetDaily();
 
       if (!needsGeneration) {
-        // Return stored trades (may include intra-day replacements)
         const stored = getTrades();
         if (stored && stored.length > 0) return stored;
       }
 
-      // Generate new trades for all modalities (daily reset or first run)
       const trades: AITrade[] = [];
       for (const modality of MODALITIES) {
         try {
           const trade = await generateAITradeForModality(modality, investmentPerModality);
-          trades.push(trade);
+          if (trade) trades.push(trade);
         } catch (err) {
           console.error(`Failed to generate trade for ${modality}:`, err);
+          // Skip failed modality — don't abort the whole generation
         }
       }
 
@@ -47,8 +47,10 @@ export function useAITradeGeneration() {
       saveTrades(trades);
       return trades;
     },
-    // Use a short stale time so invalidation from monitoring hook triggers a re-fetch
-    staleTime: 1000 * 30, // 30 seconds — allows monitoring hook invalidation to propagate quickly
+    // Stable: only refetch when the UTC date changes or capital changes
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });

@@ -1,45 +1,34 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T15:40:57.801Z",
-  "summary": "The diff implements most of the requested requirements (REQ-53 through REQ-57). REQ-53 (marketReversalDetector.ts), REQ-54 (aiTrade.ts type extensions), REQ-55 (useAITradeMonitoring integration), REQ-56 (AITradeCard visual updates), and REQ-57 (AIDailyTradesSummary metric) are all present. However, several specific acceptance criteria have gaps: REQ-54's AITradeWithPrice is missing profitProtectionSL in the resolved non-optional fields; REQ-56's badge uses 'Reversal Guard' wording instead of the specified 'Closed — Reversal Guard'; REQ-55's reverse action queuing a new opposite-direction trade is not confirmed in the truncated diff.",
+  "generatedAt": "2026-02-24T16:38:25.244Z",
+  "summary": "The diff addresses all three requirements (REQ-64, REQ-65, REQ-66) with meaningful fixes. REQ-64 is addressed via useLiveTradingMode.ts (non-blocking toggle, re-entrant guard, deferred event dispatch), LiveTradingToggle.tsx (async confirmation flow, error toast), and liveTradingStorage.ts (setTimeout-deferred events). REQ-65 is addressed via binanceOrderService.ts (new service with MARKET/TAKE_PROFIT_MARKET/STOP_MARKET), usePositionStorage.ts (per-order try/catch, fire-and-forget async, toast notifications). REQ-66 is addressed via stable refs and empty dependency arrays in useLiveTradingMode.ts, LiveTradingBanner.tsx, CredentialStatusIndicator.tsx. However, AI trade order placement in useAITradeGeneration.ts for REQ-65 is not clearly implemented.",
   "missing_requirements": [
     {
-      "id": "REQ-54",
-      "requirement": "AITradeWithPrice interface must also reflect profitProtectionSL as a resolved non-optional field",
-      "reason": "In frontend/src/types/aiTrade.ts, the AITradeWithPrice interface includes reversalDetected, reversalConfidence, reversalReason, and reversalAction as resolved fields, but profitProtectionSL is absent from AITradeWithPrice — it only appears as optional in AITrade.",
+      "id": "REQ-65",
+      "requirement": "When Live Trading mode is ON and an AI trade is generated, the corresponding entry and TP/SL orders are placed on Binance Futures.",
+      "reason": "useAITradeGeneration.ts in the diff shows no call to binanceOrderService or placeLiveOrders for AI-generated trades. The hook only generates and stores trades without placing live orders when live trading is active.",
       "evidence": [
-        "frontend/src/types/aiTrade.ts"
-      ]
-    },
-    {
-      "id": "REQ-56",
-      "requirement": "Trades closed by reversal detection must show a 'Closed — Reversal Guard' status badge with that exact label",
-      "reason": "The diff renders the badge as '🛡 Reversal Guard' rather than the AC-specified 'Closed — Reversal Guard' text.",
-      "evidence": [
-        "frontend/src/components/AITradeCard.tsx"
+        "frontend/src/hooks/useAITradeGeneration.ts"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "A dedicated frontend/src/types/reversal.ts file was created containing ReversalSignal and auxiliary interfaces (RSIDivergence, EMACrossover, CandlestickPattern, VolatilitySpike, SupportResistanceViolation)",
-      "reason": "The build request only specified that detectReversal returns a ReversalSignal object; it did not request a separate reversal.ts types file. The types were not required to be in their own file.",
-      "evidence": [
-        "frontend/src/types/reversal.ts"
-      ]
-    }
-  ],
-  "confidence": 0.72,
+  "hallucinated_features": [],
+  "confidence": 0.82,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/AIDailyTradesSummary.tsx",
-    "frontend/src/components/AITradeCard.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AIDailyTradesSection.tsx",
+    "frontend/src/components/CredentialStatusIndicator.tsx",
+    "frontend/src/components/LiveTradingBanner.tsx",
+    "frontend/src/components/LiveTradingToggle.tsx",
+    "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/hooks/useAITradeGeneration.ts",
     "frontend/src/hooks/useAITradeMonitoring.ts",
-    "frontend/src/types/aiTrade.ts",
-    "frontend/src/types/reversal.ts",
-    "frontend/src/types/tradeHistory.ts",
-    "frontend/src/utils/marketReversalDetector.ts",
+    "frontend/src/hooks/useLiveTradingMode.ts",
+    "frontend/src/hooks/usePositionStorage.ts",
+    "frontend/src/services/binanceOrderService.ts",
+    "frontend/src/utils/liveTradingStorage.ts",
     "project_state.json"
   ]
 }

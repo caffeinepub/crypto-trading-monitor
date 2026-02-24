@@ -1,3 +1,5 @@
+import { BinanceOrderIds } from './binanceApi';
+
 export type PositionType = 'Long' | 'Short';
 
 export interface TakeProfitLevel {
@@ -28,6 +30,7 @@ export interface Position {
   takeProfitLevels: TakeProfitLevel[];
   stopLoss: StopLossRecommendation;
   timestamp: number;
+  binanceOrderIds?: BinanceOrderIds;
 }
 
 export interface PositionWithPrice extends Position {

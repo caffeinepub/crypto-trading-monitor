@@ -1,70 +1,70 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T15:40:57.809Z",
+  "generatedAt": "2026-02-24T16:38:25.250Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 5,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-53",
-        "summary": "Implement a market reversal detection algorithm in the frontend (frontend/src/utils/marketReversalDetector.ts) that analyzes recent Binance kline data to identify potential trend reversals. The algorithm must evaluate: momentum divergence (RSI divergence from price action), EMA crossover signals (short-term EMA crossing long-term EMA in the opposite direction of the trade), significant candlestick reversal patterns (engulfing candles, shooting stars, hammers), ATR-based volatility spikes that signal structural breaks, and support/resistance zone violations. The function must accept the current AITrade parameters (symbol, position type, entry price, effective SL, current price, TP execution state) and return a ReversalSignal object containing: detectedReversal (boolean), confidence (0–100), reason (string description), recommendedAction ('close' | 'reverse' | 'tighten_sl' | 'none'), and suggestedNewSL (number, optional).",
+        "id": "REQ-64",
+        "summary": "Fix the Live Trading mode toggle in LiveTradingToggle.tsx and useLiveTradingMode.ts so that enabling it does not cause the application to freeze or become unresponsive. The freeze likely originates from a synchronous blocking operation, an infinite re-render loop triggered by state changes when live trading is activated, or an unhandled promise rejection in the order placement flow that locks the UI. Audit the toggle activation path — including the confirmation dialog, credential validation, localStorage write, and any reactive effects that fire on live trading state change — and ensure all async operations are non-blocking with proper error boundaries.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/utils/marketReversalDetector.ts",
-          "frontend/src/types/reversal.ts"
+          "frontend/src/hooks/useLiveTradingMode.ts",
+          "frontend/src/components/LiveTradingToggle.tsx",
+          "frontend/src/components/LiveTradingBanner.tsx",
+          "frontend/src/utils/liveTradingStorage.ts",
+          "frontend/src/components/SettingsDialog.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/utils/marketReversalDetector.ts",
-          "frontend/src/types/reversal.ts"
+          "frontend/src/hooks/useLiveTradingMode.ts",
+          "frontend/src/components/LiveTradingToggle.tsx",
+          "frontend/src/components/LiveTradingBanner.tsx",
+          "frontend/src/utils/liveTradingStorage.ts",
+          "frontend/src/components/SettingsDialog.tsx"
         ]
       },
       {
-        "id": "REQ-54",
-        "summary": "Extend the AITrade TypeScript type (frontend/src/types/aiTrade.ts) to include reversal detection state fields: 'reversalDetected' (boolean), 'reversalConfidence' (number 0–100), 'reversalReason' (string), 'reversalAction' (string: 'close' | 'reverse' | 'tighten_sl' | 'none'), and 'profitProtectionSL' (number — the tightened stop-loss price set by reversal protection logic). All fields must be optional with sensible defaults (reversalDetected: false, reversalConfidence: 0, reversalAction: 'none') for backward compatibility with existing stored trades.",
+        "id": "REQ-65",
+        "summary": "Fix the order execution flow in usePositionStorage.ts, useAITradeGeneration.ts, and binanceOrderService.ts so that when Live Trading mode is ON and valid Binance credentials are present, real orders are actually sent to Binance Futures (https://fapi.binance.com/fapi/v1/order). Ensure all order calls (market entry, TAKE_PROFIT_MARKET, STOP_MARKET) are properly awaited, errors are caught per-order without aborting the entire flow, and the result (success or failure) is surfaced to the user via a toast notification. If an order fails, log the error and continue — do not let a single order failure block position creation or AI trade activation.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/types/aiTrade.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/types/aiTrade.ts"
-        ]
-      },
-      {
-        "id": "REQ-55",
-        "summary": "Integrate the market reversal detection algorithm into the useAITradeMonitoring hook (frontend/src/hooks/useAITradeMonitoring.ts). On each price polling cycle, for every open AI trade with status 'Open', run detectReversal from marketReversalDetector.ts. Based on the returned ReversalSignal: (1) If recommendedAction is 'close' — immediately set trade status to 'SL Hit' (closed by reversal protection), record the exit at current price in AI trade history with a note 'Closed by reversal detection', and trigger auto-regeneration for that modality. (2) If recommendedAction is 'reverse' and the trade has passed TP1 (tp1Executed is true) — close the current trade at current price with profit recorded, then queue a new trade for that modality in the opposite direction. (3) If recommendedAction is 'tighten_sl' — update the trade's effectiveSL to the suggestedNewSL value and set profitProtectionSL accordingly, and persist to localStorage. Update the stored trade in localStorage under 'ai_daily_trades' after each action.",
-        "status": "implemented",
-        "plannedFiles": [
+          "frontend/src/hooks/usePositionStorage.ts",
+          "frontend/src/hooks/useAITradeGeneration.ts",
+          "frontend/src/services/binanceOrderService.ts",
           "frontend/src/hooks/useAITradeMonitoring.ts"
         ],
         "matchedFiles": [
+          "frontend/src/hooks/usePositionStorage.ts",
+          "frontend/src/hooks/useAITradeGeneration.ts",
+          "frontend/src/services/binanceOrderService.ts",
           "frontend/src/hooks/useAITradeMonitoring.ts"
         ]
       },
       {
-        "id": "REQ-56",
-        "summary": "Update the AITradeCard component (frontend/src/components/AITradeCard.tsx) to visually display the reversal detection state. When reversalDetected is true, show a prominent amber/orange warning banner inside the card with the reversalReason text and a badge indicating the action taken (e.g., 'Reversal Detected — SL Tightened', 'Reversal Detected — Trade Closed', 'Reversal Detected — Direction Reversed'). When reversalAction is 'tighten_sl', display the profitProtectionSL price alongside the effectiveSL with a label 'Profit Protection SL'. When a trade was closed by reversal detection, show a distinct status badge 'Closed — Reversal Guard' in addition to the normal closed state. The reversal warning must use the existing golden-themed design system (amber/orange tones from the existing CSS variables) and not introduce new color tokens.",
+        "id": "REQ-66",
+        "summary": "Audit all useEffect and React Query hooks that listen to the live trading mode state (live_trading_enabled in localStorage) — including useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts — and remove or fix any dependency array entries or event listener registrations that could cause infinite loops or cascading re-renders when live trading is toggled. Ensure custom window event listeners for live trading state changes are registered once and properly cleaned up on unmount.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/AITradeCard.tsx"
+          "frontend/src/hooks/useLiveTradingMode.ts",
+          "frontend/src/hooks/usePositionStorage.ts",
+          "frontend/src/hooks/useAITradeGeneration.ts",
+          "frontend/src/hooks/useAITradeMonitoring.ts",
+          "frontend/src/components/LiveTradingBanner.tsx",
+          "frontend/src/components/CredentialStatusIndicator.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/AITradeCard.tsx"
-        ]
-      },
-      {
-        "id": "REQ-57",
-        "summary": "Add a 'Reversal Guard' summary metric to the AIDailyTradesSummary component (frontend/src/components/AIDailyTradesSummary.tsx) that counts how many trades were protected (closed or reversed) by the reversal detection algorithm today. Display this as a small stat alongside the existing PnL summary (e.g., 'Reversal Guards: 2') so users can see how many times the AI protected profits during the day.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AIDailyTradesSummary.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AIDailyTradesSummary.tsx"
+          "frontend/src/hooks/useLiveTradingMode.ts",
+          "frontend/src/hooks/usePositionStorage.ts",
+          "frontend/src/hooks/useAITradeGeneration.ts",
+          "frontend/src/hooks/useAITradeMonitoring.ts",
+          "frontend/src/components/LiveTradingBanner.tsx",
+          "frontend/src/components/CredentialStatusIndicator.tsx"
         ]
       }
     ]
@@ -74,13 +74,18 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/AIDailyTradesSummary.tsx",
-    "frontend/src/components/AITradeCard.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AIDailyTradesSection.tsx",
+    "frontend/src/components/CredentialStatusIndicator.tsx",
+    "frontend/src/components/LiveTradingBanner.tsx",
+    "frontend/src/components/LiveTradingToggle.tsx",
+    "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/hooks/useAITradeGeneration.ts",
     "frontend/src/hooks/useAITradeMonitoring.ts",
-    "frontend/src/types/aiTrade.ts",
-    "frontend/src/types/reversal.ts",
-    "frontend/src/types/tradeHistory.ts",
-    "frontend/src/utils/marketReversalDetector.ts",
+    "frontend/src/hooks/useLiveTradingMode.ts",
+    "frontend/src/hooks/usePositionStorage.ts",
+    "frontend/src/services/binanceOrderService.ts",
+    "frontend/src/utils/liveTradingStorage.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -1,13 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Add AI-powered market reversal detection to the Crypto Position Monitor so that open AI trades are automatically protected from losing accumulated profits when the market reverses direction.
+**Goal:** Fix the Live Trading mode toggle so it no longer freezes the application, and ensure real orders are correctly sent to Binance Futures when Live Trading mode is active.
 
 **Planned changes:**
-- Create `frontend/src/utils/marketReversalDetector.ts` with a `detectReversal` function that fetches Binance kline data and evaluates RSI divergence, EMA crossovers, candlestick reversal patterns, ATR volatility spikes, and support/resistance violations, returning a `ReversalSignal` object with confidence score and recommended action
-- Extend `AITrade` type in `frontend/src/types/aiTrade.ts` with optional reversal state fields: `reversalDetected`, `reversalConfidence`, `reversalReason`, `reversalAction`, and `profitProtectionSL`
-- Integrate reversal detection into `useAITradeMonitoring` hook so that on each polling cycle it runs `detectReversal` for every open trade and acts accordingly: closes the trade (confidence > 75%), reverses direction (confidence > 85% and TP1 executed), or tightens the stop-loss (confidence 50–75%)
-- Update `AITradeCard` component to show an amber/orange warning banner when a reversal is detected, display a "Profit Protection SL" label when SL is tightened, and show a "Closed — Reversal Guard" status badge for trades closed by reversal detection
-- Add a "Reversal Guards" count metric to `AIDailyTradesSummary` showing how many trades were protected by reversal detection today
+- Fix `LiveTradingToggle.tsx` and `useLiveTradingMode.ts` to prevent UI freeze when enabling Live Trading mode by ensuring all async operations (credential validation, localStorage write, confirmation dialog) are non-blocking with proper error boundaries.
+- Audit and fix `useEffect` and React Query dependency arrays in `useLiveTradingMode.ts`, `usePositionStorage.ts`, and `useAITradeGeneration.ts` to eliminate infinite re-render loops triggered by live trading state changes.
+- Ensure custom `window` event listeners for live trading state changes are registered once and properly cleaned up on unmount.
+- Fix the order execution flow in `usePositionStorage.ts`, `useAITradeGeneration.ts`, and `binanceOrderService.ts` so that when Live Trading mode is ON, real MARKET, TAKE_PROFIT_MARKET, and STOP_MARKET orders are sent to Binance Futures (`https://fapi.binance.com/fapi/v1/order`).
+- Wrap each individual order call in try/catch so a failure in one order does not abort the others, and surface results via toast notifications.
 
-**User-visible outcome:** Users can see when the AI detects a market reversal on any open AI trade, observe the automatic protective action taken (SL tightened, trade closed, or direction reversed), and view a daily summary of how many times the AI guarded their profits.
+**User-visible outcome:** Users can toggle Live Trading mode ON without the app freezing or becoming unresponsive. When Live Trading mode is active with valid Binance credentials, real orders are placed on Binance Futures and the user receives toast feedback on success or failure.

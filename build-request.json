@@ -1,121 +1,79 @@
 {
   "kind": "build_request",
-  "title": "AI Market Reversal Detection and Profit Protection",
-  "projectName": "Crypto Position Monitor",
-  "priority": "normal",
+  "title": "Fix Live Trading Mode freeze and order execution failure",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-53",
-      "text": "Implement a market reversal detection algorithm in the frontend (frontend/src/utils/marketReversalDetector.ts) that analyzes recent Binance kline data to identify potential trend reversals. The algorithm must evaluate: momentum divergence (RSI divergence from price action), EMA crossover signals (short-term EMA crossing long-term EMA in the opposite direction of the trade), significant candlestick reversal patterns (engulfing candles, shooting stars, hammers), ATR-based volatility spikes that signal structural breaks, and support/resistance zone violations. The function must accept the current AITrade parameters (symbol, position type, entry price, effective SL, current price, TP execution state) and return a ReversalSignal object containing: detectedReversal (boolean), confidence (0–100), reason (string description), recommendedAction ('close' | 'reverse' | 'tighten_sl' | 'none'), and suggestedNewSL (number, optional).",
+      "id": "REQ-64",
+      "text": "Fix the Live Trading mode toggle in LiveTradingToggle.tsx and useLiveTradingMode.ts so that enabling it does not cause the application to freeze or become unresponsive. The freeze likely originates from a synchronous blocking operation, an infinite re-render loop triggered by state changes when live trading is activated, or an unhandled promise rejection in the order placement flow that locks the UI. Audit the toggle activation path — including the confirmation dialog, credential validation, localStorage write, and any reactive effects that fire on live trading state change — and ensure all async operations are non-blocking with proper error boundaries.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-1"
         ],
         "quotes": [
-          "Seria importante acrescentar a capacidade do I.A reconhecer viradas de mercado .. e ser capaz de reverter tendências ou fechar posições antes de perder os lucros obtidos"
+          "Ai ativar a opcao . \" live trade mode\" . O aplicativo trava. Apenas fechando o aplicativo eh possivel alguma ação"
         ]
       },
       "acceptanceCriteria": [
-        "marketReversalDetector.ts exports a detectReversal function that fetches Binance kline data for the appropriate modality timeframe",
-        "Function returns a ReversalSignal with detectedReversal, confidence (0–100), reason, recommendedAction, and optional suggestedNewSL",
-        "RSI divergence, EMA crossover, candlestick patterns, ATR volatility spikes, and support/resistance violations are all evaluated",
-        "recommendedAction is 'close' when reversal confidence > 75%, 'reverse' when > 85% and trade has accumulated profit (price past TP1), 'tighten_sl' when confidence is 50–75%, and 'none' otherwise",
-        "The function is modality-aware: uses 1m/5m klines for Scalping, 15m/1h for Day Trading, 4h/1d for Swing Trading, 1d/1w for Trend Following"
+        "Toggling Live Trading mode ON does not freeze, hang, or make the UI unresponsive.",
+        "The application remains fully interactive after enabling Live Trading mode.",
+        "If credential validation fails asynchronously, the error is caught and displayed as a toast/badge without locking the UI.",
+        "No infinite re-render loop is triggered when live trading state changes in localStorage.",
+        "The Live Trading amber banner appears correctly in the header after enabling without any UI lockup."
       ]
     },
     {
-      "id": "REQ-54",
-      "text": "Extend the AITrade TypeScript type (frontend/src/types/aiTrade.ts) to include reversal detection state fields: 'reversalDetected' (boolean), 'reversalConfidence' (number 0–100), 'reversalReason' (string), 'reversalAction' (string: 'close' | 'reverse' | 'tighten_sl' | 'none'), and 'profitProtectionSL' (number — the tightened stop-loss price set by reversal protection logic). All fields must be optional with sensible defaults (reversalDetected: false, reversalConfidence: 0, reversalAction: 'none') for backward compatibility with existing stored trades.",
+      "id": "REQ-65",
+      "text": "Fix the order execution flow in usePositionStorage.ts, useAITradeGeneration.ts, and binanceOrderService.ts so that when Live Trading mode is ON and valid Binance credentials are present, real orders are actually sent to Binance Futures (https://fapi.binance.com/fapi/v1/order). Ensure all order calls (market entry, TAKE_PROFIT_MARKET, STOP_MARKET) are properly awaited, errors are caught per-order without aborting the entire flow, and the result (success or failure) is surfaced to the user via a toast notification. If an order fails, log the error and continue — do not let a single order failure block position creation or AI trade activation.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-1"
         ],
         "quotes": [
-          "ser capaz de reverter tendências ou fechar posições antes de perder os lucros obtidos"
+          "nao conseguimos enviar as ordens"
         ]
       },
       "acceptanceCriteria": [
-        "frontend/src/types/aiTrade.ts includes all five new optional fields with TypeScript types",
-        "Existing stored trades without these fields remain compatible (defaults apply via nullish coalescing)",
-        "AITradeWithPrice interface also reflects these new fields"
+        "When Live Trading mode is ON and credentials are valid, adding a manual position triggers a real MARKET order on Binance Futures followed by TAKE_PROFIT_MARKET and STOP_MARKET orders.",
+        "When Live Trading mode is ON and an AI trade is generated, the corresponding entry and TP/SL orders are placed on Binance Futures.",
+        "Each order call is wrapped in try/catch; a failure in one order (e.g., TP order) does not prevent the others from being attempted.",
+        "A success toast is shown when orders are placed, and an error toast is shown with the Binance error message if an order fails.",
+        "Order placement is fully asynchronous and does not block the UI thread."
       ]
     },
     {
-      "id": "REQ-55",
-      "text": "Integrate the market reversal detection algorithm into the useAITradeMonitoring hook (frontend/src/hooks/useAITradeMonitoring.ts). On each price polling cycle, for every open AI trade with status 'Open', run detectReversal from marketReversalDetector.ts. Based on the returned ReversalSignal: (1) If recommendedAction is 'close' — immediately set trade status to 'SL Hit' (closed by reversal protection), record the exit at current price in AI trade history with a note 'Closed by reversal detection', and trigger auto-regeneration for that modality. (2) If recommendedAction is 'reverse' and the trade has passed TP1 (tp1Executed is true) — close the current trade at current price with profit recorded, then queue a new trade for that modality in the opposite direction. (3) If recommendedAction is 'tighten_sl' — update the trade's effectiveSL to the suggestedNewSL value and set profitProtectionSL accordingly, and persist to localStorage. Update the stored trade in localStorage under 'ai_daily_trades' after each action.",
+      "id": "REQ-66",
+      "text": "Audit all useEffect and React Query hooks that listen to the live trading mode state (live_trading_enabled in localStorage) — including useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts — and remove or fix any dependency array entries or event listener registrations that could cause infinite loops or cascading re-renders when live trading is toggled. Ensure custom window event listeners for live trading state changes are registered once and properly cleaned up on unmount.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-1"
         ],
         "quotes": [
-          "reconhecer viradas de mercado .. e ser capaz de reverter tendências ou fechar posições antes de perder os lucros obtidos"
+          "O aplicativo trava. Apenas fechando o aplicativo eh possivel alguma ação"
         ]
       },
       "acceptanceCriteria": [
-        "useAITradeMonitoring polls detectReversal for every open AI trade on each price update cycle",
-        "A 'close' action transitions the trade status to closed, records the outcome in AI trade history with a 'Closed by reversal detection' note, and triggers auto-regeneration",
-        "A 'reverse' action (only when tp1Executed is true) closes the current trade with profit and enqueues a new opposite-direction trade for that modality",
-        "A 'tighten_sl' action updates effectiveSL to the suggested new SL price and persists to localStorage",
-        "Reversal fields (reversalDetected, reversalConfidence, reversalReason, reversalAction, profitProtectionSL) are saved to the trade in localStorage after detection",
-        "No reversal action fires when recommendedAction is 'none'"
-      ]
-    },
-    {
-      "id": "REQ-56",
-      "text": "Update the AITradeCard component (frontend/src/components/AITradeCard.tsx) to visually display the reversal detection state. When reversalDetected is true, show a prominent amber/orange warning banner inside the card with the reversalReason text and a badge indicating the action taken (e.g., 'Reversal Detected — SL Tightened', 'Reversal Detected — Trade Closed', 'Reversal Detected — Direction Reversed'). When reversalAction is 'tighten_sl', display the profitProtectionSL price alongside the effectiveSL with a label 'Profit Protection SL'. When a trade was closed by reversal detection, show a distinct status badge 'Closed — Reversal Guard' in addition to the normal closed state. The reversal warning must use the existing golden-themed design system (amber/orange tones from the existing CSS variables) and not introduce new color tokens.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "fechar posições antes de perder os lucros obtidos"
-        ]
-      },
-      "acceptanceCriteria": [
-        "An amber/orange warning banner appears inside AITradeCard when reversalDetected is true",
-        "The banner displays the reversalReason string and a badge for the action taken",
-        "When reversalAction is 'tighten_sl', the profitProtectionSL price is shown with the label 'Profit Protection SL' near the effective SL row",
-        "Trades closed by reversal detection show a 'Closed — Reversal Guard' status badge",
-        "No new CSS color tokens are introduced; existing variables from index.css are reused",
-        "Visual changes are consistent with the golden-themed card design"
-      ]
-    },
-    {
-      "id": "REQ-57",
-      "text": "Add a 'Reversal Guard' summary metric to the AIDailyTradesSummary component (frontend/src/components/AIDailyTradesSummary.tsx) that counts how many trades were protected (closed or reversed) by the reversal detection algorithm today. Display this as a small stat alongside the existing PnL summary (e.g., 'Reversal Guards: 2') so users can see how many times the AI protected profits during the day.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "ser capaz de reverter tendências ou fechar posições antes de perder os lucros obtidos"
-        ]
-      },
-      "acceptanceCriteria": [
-        "AIDailyTradesSummary displays a 'Reversal Guards' count derived from AI trade history records where the outcome note includes 'Closed by reversal detection' or direction was reversed",
-        "The stat is displayed in the summary banner alongside total PnL and win/loss counts",
-        "The count resets to 0 at UTC day rollover consistent with the daily trade reset logic",
-        "The metric is visible on both mobile and desktop layouts without breaking the existing summary layout"
+        "No infinite re-render loops occur when live trading mode is toggled ON or OFF.",
+        "Custom window event listeners for live trading state are added once and removed on component unmount.",
+        "React Query hooks that depend on live trading state do not refetch in an infinite loop after the toggle.",
+        "The application's frame rate and interactivity remain normal after toggling live trading mode multiple times in a session."
       ]
     }
   ],
   "constraints": [
-    "Do not modify any files listed in frontend.immutablePaths",
-    "All reversal detection must use Binance klines API (https://fapi.binance.com/fapi/v1/klines) — no external AI or ML service calls",
-    "Reversal detection must reuse the existing technical analysis utilities in frontend/src/utils/technicalAnalysis.ts wherever possible",
-    "Trade closure by reversal must record outcomes in AI trade history using the existing aiTradeHistoryStorage utility",
-    "No new color tokens may be introduced; reuse existing CSS variables from frontend/src/index.css"
+    "Do not change the backend (backend/main.mo).",
+    "Do not modify any file listed in frontend.immutablePaths.",
+    "Live Trading mode must remain OFF by default.",
+    "The existing simulated/fictitious order logic must remain fully functional when Live Trading mode is OFF."
   ],
   "nonGoals": [
-    "Reversal detection for user manual positions (PositionDashboard) — only AI Daily Trades are in scope",
-    "Machine learning model training or external AI API integration",
-    "Automatic position reversal for trades that have NOT yet executed TP1 (reversal direction flip is only allowed after TP1 is executed to protect accumulated profit)",
-    "Backend changes — all logic is purely frontend"
+    "Adding new trading features or UI sections.",
+    "Changing the golden color theme or layout.",
+    "Modifying the PWA install flow.",
+    "Changing the AI trade selection algorithm."
   ],
   "imageRequirements": {
     "required": [],

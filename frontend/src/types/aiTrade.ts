@@ -1,3 +1,5 @@
+import { BinanceOrderIds } from './binanceApi';
+
 export type TradingModality = 'Scalping' | 'DayTrading' | 'SwingTrading' | 'TrendFollowing';
 export type TradeStatus = 'Open' | 'Closed' | 'TPHit' | 'SLHit';
 export type RiskManagementStep = 'initial' | 'breakeven' | 'trailing' | 'closed';
@@ -32,6 +34,9 @@ export interface AITrade {
   reversalReason?: string;
   reversalAction?: 'close' | 'reverse' | 'tighten_sl' | 'none';
   profitProtectionSL?: number; // stop-loss price set by reversal protection logic
+
+  // Binance order IDs when Live Trading is active (optional)
+  binanceOrderIds?: BinanceOrderIds;
 }
 
 export interface AITradeWithPrice extends AITrade {

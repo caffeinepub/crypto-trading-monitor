@@ -60,21 +60,11 @@ function resolveTradeDefaults(trade: AITrade): Required<
   };
 }
 
-/**
- * Check if price has crossed a TP level in the correct direction.
- * For Long: price >= tp level
- * For Short: price <= tp level
- */
 function hasCrossedTP(currentPrice: number, tpPrice: number, positionType: 'Long' | 'Short'): boolean {
   if (positionType === 'Long') return currentPrice >= tpPrice;
   return currentPrice <= tpPrice;
 }
 
-/**
- * Check if price has crossed the effective SL level.
- * For Long: price <= sl
- * For Short: price >= sl
- */
 function hasCrossedSL(currentPrice: number, slPrice: number, positionType: 'Long' | 'Short'): boolean {
   if (positionType === 'Long') return currentPrice <= slPrice;
   return currentPrice >= slPrice;
@@ -84,13 +74,8 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
   const symbols = trades ? trades.map((t) => t.symbol) : [];
   const queryClient = useQueryClient();
 
-  // Track previous statuses to detect transitions
   const prevStatusesRef = useRef<Record<string, string>>({});
-  // Track which modalities are currently being regenerated to avoid duplicate calls
   const regeneratingRef = useRef<Set<TradingModality>>(new Set());
-  // Track which trades have had reversal detection run this cycle to avoid duplicates
-  const reversalCheckedRef = useRef<Set<string>>(new Set());
-  // Track reversal detection in-flight to avoid concurrent calls for same trade
   const reversalInFlightRef = useRef<Set<string>>(new Set());
 
   const query = useQuery<AITradeWithPrice[]>({
@@ -104,7 +89,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
         priceMap[p.symbol] = parseFloat(p.price);
       }
 
-      // Load current stored trades so we can persist TP execution state
       const storedTrades = loadStoredTrades();
       const storedMap: Record<string, AITrade> = {};
       if (storedTrades) {
@@ -119,7 +103,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
       for (const trade of trades) {
         const currentPrice = priceMap[trade.symbol] ?? trade.entryPrice;
 
-        // Use stored state (which may have been updated in a previous cycle)
         const stored = storedMap[trade.id] ?? trade;
         const defaults = resolveTradeDefaults(stored);
 
@@ -138,37 +121,27 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
         let profitProtectionSL = stored.profitProtectionSL;
         let status = stored.status ?? trade.status;
 
-        // Only process TP/SL logic for Open trades
         if (status === 'Open') {
-          // Check SL hit first (using effectiveSL which may have moved)
           if (hasCrossedSL(currentPrice, effectiveSL, trade.positionType)) {
             status = 'SLHit';
             riskManagementStep = 'closed';
           } else {
-            // TP3 check (only after TP2 executed)
             if (!tp3Executed && tp2Executed && hasCrossedTP(currentPrice, trade.tp3, trade.positionType)) {
               tp3Executed = true;
               status = 'TPHit';
               riskManagementStep = 'closed';
-            }
-            // TP2 check (only after TP1 executed)
-            else if (!tp2Executed && tp1Executed && hasCrossedTP(currentPrice, trade.tp2, trade.positionType)) {
+            } else if (!tp2Executed && tp1Executed && hasCrossedTP(currentPrice, trade.tp2, trade.positionType)) {
               tp2Executed = true;
-              // Trail SL to TP1 price
               effectiveSL = trade.tp1;
               riskManagementStep = 'trailing';
-            }
-            // TP1 check (first target)
-            else if (!tp1Executed && hasCrossedTP(currentPrice, trade.tp1, trade.positionType)) {
+            } else if (!tp1Executed && hasCrossedTP(currentPrice, trade.tp1, trade.positionType)) {
               tp1Executed = true;
-              // Move SL to breakeven (entry price)
               effectiveSL = trade.entryPrice;
               riskManagementStep = 'breakeven';
             }
           }
         }
 
-        // Build the updated trade object with new execution state
         const updatedTrade: AITrade = {
           ...stored,
           status,
@@ -186,7 +159,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
 
         updatedTrades.push(updatedTrade);
 
-        // Calculate PnL using effectiveSL context (PnL is still based on entry vs current)
         const { pnlUSD, pnlPercent } = calculatePnL(
           trade.entryPrice,
           currentPrice,
@@ -200,7 +172,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
           currentPrice,
           pnlUsd: pnlUSD,
           pnlPercent,
-          // Ensure resolved (non-optional) values for UI
           tp1Executed,
           tp2Executed,
           tp3Executed,
@@ -213,7 +184,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
         });
       }
 
-      // Persist updated execution state to localStorage
       if (updatedTrades.length > 0) {
         saveStoredTrades(updatedTrades);
       }
@@ -224,30 +194,26 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
     refetchInterval: 5000,
   });
 
-  // Detect status transitions to TPHit or SLHit and auto-regenerate
-  // Also run reversal detection for open trades
+  // Detect status transitions and auto-regenerate; run reversal detection for open trades
   useEffect(() => {
     const tradesWithPrices = query.data;
     if (!tradesWithPrices || tradesWithPrices.length === 0) return;
 
-    const totalCapital = getTotalCapital();
+    const rawCapital = getTotalCapital();
+    const totalCapital = rawCapital !== null ? rawCapital : 0;
     const investmentPerModality =
-      totalCapital !== null && totalCapital > 0
-        ? totalCapital / 4
-        : DEFAULT_INVESTMENT_PER_MODALITY;
+      totalCapital > 0 ? totalCapital / 4 : DEFAULT_INVESTMENT_PER_MODALITY;
 
     for (const trade of tradesWithPrices) {
       const prevStatus = prevStatusesRef.current[trade.id];
       const currentStatus = trade.status;
 
-      // Detect transition: was Open (or undefined), now TPHit or SLHit
       const justClosed =
         (currentStatus === 'TPHit' || currentStatus === 'SLHit') &&
         prevStatus !== 'TPHit' &&
         prevStatus !== 'SLHit';
 
       if (justClosed) {
-        // Save to AI trade history
         saveAITradeHistory({
           id: trade.id,
           symbol: trade.symbol,
@@ -266,12 +232,10 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
       if (justClosed && !regeneratingRef.current.has(trade.modality)) {
         regeneratingRef.current.add(trade.modality);
 
-        // Auto-regenerate a replacement trade for this modality
         (async () => {
           try {
             const newTrade = await generateAITradeForModality(trade.modality, investmentPerModality);
 
-            // Load current stored trades and replace only this modality's entry
             const stored = loadStoredTrades();
             if (stored) {
               const updated = stored.map((t) =>
@@ -282,7 +246,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
               saveStoredTrades([newTrade]);
             }
 
-            // Invalidate the generation query so the UI picks up the new trade
             queryClient.invalidateQueries({ queryKey: ['ai-daily-trades'] });
           } catch (err) {
             console.error(`Auto-regeneration failed for ${trade.modality}:`, err);
@@ -292,7 +255,10 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
         })();
       }
 
-      // ─── Reversal Detection for Open Trades ───────────────────────────────
+      // Update previous status tracking
+      prevStatusesRef.current[trade.id] = currentStatus;
+
+      // Reversal detection for open trades
       if (
         currentStatus === 'Open' &&
         !reversalInFlightRef.current.has(trade.id)
@@ -314,7 +280,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
               tp1: trade.tp1,
             });
 
-            // Load fresh stored trades to apply changes
             const stored = loadStoredTrades();
             if (!stored) return;
 
@@ -322,14 +287,11 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
             if (tradeIndex === -1) return;
 
             const storedTrade = stored[tradeIndex];
-
-            // Skip if trade is no longer open (may have been closed in the meantime)
             if (storedTrade.status !== 'Open') return;
 
             const updatedStoredTrades = [...stored];
 
             if (signal.recommendedAction === 'close') {
-              // Close the trade by reversal detection
               const { pnlUSD, pnlPercent } = calculatePnL(
                 storedTrade.entryPrice,
                 trade.currentPrice,
@@ -338,7 +300,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
                 storedTrade.positionType
               );
 
-              // Save to history with reversal note
               saveAITradeHistory({
                 id: storedTrade.id,
                 symbol: storedTrade.symbol,
@@ -366,7 +327,6 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
 
               saveStoredTrades(updatedStoredTrades);
 
-              // Trigger auto-regeneration for this modality
               if (!regeneratingRef.current.has(storedTrade.modality)) {
                 regeneratingRef.current.add(storedTrade.modality);
                 try {
@@ -389,7 +349,7 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
                 }
               }
             } else if (signal.recommendedAction === 'reverse' && storedTrade.tp1Executed) {
-              // Close current trade with profit and create opposite direction trade
+              // Mark as closed by reversal, will be regenerated
               const { pnlUSD, pnlPercent } = calculatePnL(
                 storedTrade.entryPrice,
                 trade.currentPrice,
@@ -410,7 +370,7 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
                 pnlPercent,
                 outcome: 'TP Hit',
                 timestamp: Date.now(),
-                outcomeNote: 'Closed by reversal detection — direction reversed',
+                outcomeNote: 'Closed by reversal detection (reverse signal after TP1)',
               });
 
               updatedStoredTrades[tradeIndex] = {
@@ -424,44 +384,20 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
               };
 
               saveStoredTrades(updatedStoredTrades);
-
-              // Enqueue a new opposite-direction trade
-              if (!regeneratingRef.current.has(storedTrade.modality)) {
-                regeneratingRef.current.add(storedTrade.modality);
-                try {
-                  const newTrade = await generateAITradeForModality(
-                    storedTrade.modality,
-                    investmentPerModality
-                  );
-                  const freshStored = loadStoredTrades();
-                  if (freshStored) {
-                    const updated = freshStored.map((t) =>
-                      t.modality === storedTrade.modality ? newTrade : t
-                    );
-                    saveStoredTrades(updated);
-                  }
-                  queryClient.invalidateQueries({ queryKey: ['ai-daily-trades'] });
-                } catch (err) {
-                  console.error(`Auto-regeneration after reversal failed:`, err);
-                } finally {
-                  regeneratingRef.current.delete(storedTrade.modality);
-                }
-              }
-            } else if (signal.recommendedAction === 'tighten_sl' && signal.suggestedNewSL !== undefined) {
-              // Tighten the stop-loss
+              queryClient.invalidateQueries({ queryKey: ['ai-daily-trades'] });
+            } else if (signal.recommendedAction === 'tighten_sl' && signal.suggestedNewSL) {
               updatedStoredTrades[tradeIndex] = {
                 ...storedTrade,
-                effectiveSL: signal.suggestedNewSL,
-                profitProtectionSL: signal.suggestedNewSL,
                 reversalDetected: signal.detectedReversal,
                 reversalConfidence: signal.confidence,
                 reversalReason: signal.reason,
                 reversalAction: signal.recommendedAction,
+                profitProtectionSL: signal.suggestedNewSL,
+                effectiveSL: signal.suggestedNewSL,
               };
               saveStoredTrades(updatedStoredTrades);
-              queryClient.invalidateQueries({ queryKey: ['ai-daily-trades'] });
-            } else if (signal.detectedReversal) {
-              // Update reversal fields even if no action taken
+            } else {
+              // Update reversal state even if no action
               updatedStoredTrades[tradeIndex] = {
                 ...storedTrade,
                 reversalDetected: signal.detectedReversal,
@@ -472,19 +408,13 @@ export function useAITradeMonitoring(trades: AITrade[] | undefined) {
               saveStoredTrades(updatedStoredTrades);
             }
           } catch (err) {
-            console.error(`Reversal detection error for ${trade.symbol}:`, err);
+            console.error(`Reversal detection failed for ${trade.symbol}:`, err);
           } finally {
             reversalInFlightRef.current.delete(trade.id);
           }
         })();
       }
-
-      // Update tracked status
-      prevStatusesRef.current[trade.id] = currentStatus;
     }
-
-    // Clear the reversal checked set for next cycle
-    reversalCheckedRef.current.clear();
   }, [query.data, queryClient]);
 
   return query;
