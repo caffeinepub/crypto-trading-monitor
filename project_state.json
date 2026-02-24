@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 51,
+  "projectStateVersion": 53,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -19,9 +19,10 @@
     "AI trades hitting TP1/TP2/TP3 are not executing fictitious orders or advancing risk management steps (e.g., moving SL to breakeven after TP1)",
     "Settings/API key gear icon button in the header is unresponsive when clicked — the BinanceCredentialsPanel settings section does not open",
     "Enabling 'Live Trade Mode' causes the application to freeze/hang — the only recovery is closing the app; orders are not being sent to Binance",
-    "'Import from Binance' button not visible in Dashboard tab even when Binance credentials are configured and connection test passes"
+    "'Import from Binance' button not visible in Dashboard tab even when Binance credentials are configured and connection test passes",
+    "Position Size Calculator does not show all Binance USD-M Futures perpetual pairs — only a limited subset is available for selection"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-create-a-manual-position-entry-form-with-fields-for-asset-selection-dropdown-autocomplete-validated-against-binance-usd-m-futures-perpetual-pairs-position-type-long-short-selector-leverage-1x-to-125x-numeric-input-entry-price-numeric-input-and-investment-amount-in-usd-numeric-input-calculate-and-prominently-display-total-exposure-as-investment-leverage",
@@ -766,6 +767,14 @@
         "REQ-93"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-asset-selection-input-in-the-positionsizecalculator-component-frontend-src-components-positionsizecalculator-tsx-to-populate-its-dropdown-autocomplete-with-the-full-list-of-binance-usd-m-futures-perpetual-pairs-fetched-via-the-existing-usebinancepairs-hook-frontend-src-hooks-usebinancepairs-ts-which-calls-https-fapi-binance-com-fapi-v1-exchangeinfo-and-filters-for-contracttype-perpetual-the-selector-must-expose-all-perpetual-pairs-returned-by-that-endpoint-not-a-hardcoded-or-pre-filtered-subset-display-a-loading-state-while-pairs-are-being-fetched-and-an-error-message-if-the-fetch-fails-the-selected-symbol-must-drive-the-live-price-fetch-https-fapi-binance-com-fapi-v1-ticker-price-symbol-symbol-and-leverage-bracket-fetch-https-fapi-binance-com-fapi-v1-leveragebracket-symbol-symbol-already-implemented-in-the-component",
+      "title": "Update the asset selection input in the PositionSizeCalculator component (frontend/src/components/PositionSizeCalculator.tsx) to populate its dropdown/autocomplete with the full list of Binance USD-M Futures perpetual pairs fetched via the existing useBinancePairs hook (frontend/src/hooks/useBinancePairs.ts), which calls https://fapi.binance.com/fapi/v1/exchangeInfo and filters for contractType === 'PERPETUAL'. The selector must expose all perpetual pairs returned by that endpoint — not a hardcoded or pre-filtered subset. Display a loading state while pairs are being fetched and an error message if the fetch fails. The selected symbol must drive the live price fetch (https://fapi.binance.com/fapi/v1/ticker/price?symbol=SYMBOL) and leverage bracket fetch (https://fapi.binance.com/fapi/v1/leverageBracket?symbol=SYMBOL) already implemented in the component.",
+      "reqIds": [
+        "REQ-94"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -934,6 +943,12 @@
     {
       "id": "AR-28",
       "summary": "Remove the manual position entry form (PositionEntryForm) from the Dashboard, keeping only the 'Import from Binance' button as the way to add positions",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Position Size Calculator (Simulator) should offer access to all Binance USD-M Futures perpetual pairs for asset selection, not just a limited subset",
       "reqIds": [],
       "status": "pending"
     }

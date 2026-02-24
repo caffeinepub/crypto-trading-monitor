@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,12 +6,26 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, ArrowRight, RefreshCw, AlertTriangle, TrendingUp, Wifi, WifiOff } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Calculator,
+  ArrowRight,
+  RefreshCw,
+  AlertTriangle,
+  TrendingUp,
+  Wifi,
+  WifiOff,
+  ChevronsUpDown,
+  Check,
+  AlertCircle,
+} from 'lucide-react';
 import { calculatePositionSize } from '../utils/positionSizeCalculator';
 import { PositionSizeResult } from '../types/calculator';
 import { getTotalCapital } from '../utils/totalCapitalStorage';
-import { fetchTickerPrice, fetchLeverageBracket, fetchPerpetualPairs, LeverageBracket } from '../services/binanceApi';
+import { fetchTickerPrice, fetchLeverageBracket, LeverageBracket } from '../services/binanceApi';
+import { useBinancePairs } from '../hooks/useBinancePairs';
 
 interface PositionSizeCalculatorProps {
   onApply?: (result: PositionSizeResult & { stopLossPrice: number }) => void;
@@ -26,6 +40,8 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
   const [result, setResult] = useState<PositionSizeResult | null>(null);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('BTCUSDT');
   const [useLivePrice, setUseLivePrice] = useState<boolean>(false);
+  const [pairSearchOpen, setPairSearchOpen] = useState<boolean>(false);
+  const [pairSearch, setPairSearch] = useState<string>('');
 
   // Load total capital on mount
   useEffect(() => {
@@ -35,13 +51,20 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
     }
   }, []);
 
-  // Fetch perpetual pairs for symbol selector
-  const { data: pairs } = useQuery({
-    queryKey: ['binance-pairs'],
-    queryFn: fetchPerpetualPairs,
-    staleTime: 1000 * 60 * 60,
-    retry: 2,
-  });
+  // Fetch all perpetual pairs using the shared hook
+  const {
+    data: pairs,
+    isLoading: isPairsLoading,
+    isError: isPairsError,
+  } = useBinancePairs();
+
+  // Filter pairs based on search input
+  const filteredPairs = useMemo(() => {
+    if (!pairs) return [];
+    const q = pairSearch.trim().toUpperCase();
+    if (!q) return pairs;
+    return pairs.filter((p) => p.includes(q));
+  }, [pairs, pairSearch]);
 
   // Fetch live ticker price for selected symbol
   const {
@@ -73,9 +96,12 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
   // Find the bracket that applies to the current leverage
   const symbolBrackets: LeverageBracket[] = bracketData?.[0]?.brackets ?? [];
   const maxAllowedLeverage = symbolBrackets.length > 0 ? symbolBrackets[0].initialLeverage : null;
-  const currentBracket = symbolBrackets.find(
-    (b) => leverage <= b.initialLeverage && leverage > (symbolBrackets[symbolBrackets.indexOf(b) + 1]?.initialLeverage ?? 0)
-  ) ?? symbolBrackets[symbolBrackets.length - 1];
+  const currentBracket =
+    symbolBrackets.find(
+      (b) =>
+        leverage <= b.initialLeverage &&
+        leverage > (symbolBrackets[symbolBrackets.indexOf(b) + 1]?.initialLeverage ?? 0)
+    ) ?? symbolBrackets[symbolBrackets.length - 1];
   const maintMarginRatio = currentBracket?.maintMarginRatio ?? null;
   const leverageExceedsMax = maxAllowedLeverage !== null && leverage > maxAllowedLeverage;
 
@@ -112,8 +138,12 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
     }
   };
 
-  const popularPairs = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT'];
-  const displayPairs = pairs ?? popularPairs;
+  const handleSelectSymbol = (symbol: string) => {
+    setSelectedSymbol(symbol);
+    setUseLivePrice(false);
+    setPairSearchOpen(false);
+    setPairSearch('');
+  };
 
   return (
     <Card className="border-primary/30 shadow-lg">
@@ -124,19 +154,84 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Symbol Selector */}
+        {/* Symbol Selector — searchable combobox with all perpetual pairs */}
         <div className="space-y-2">
           <Label>Symbol</Label>
-          <Select value={selectedSymbol} onValueChange={(v) => { setSelectedSymbol(v); setUseLivePrice(false); }}>
-            <SelectTrigger className="border-primary/30">
-              <SelectValue placeholder="Select symbol" />
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {displayPairs.slice(0, 50).map((pair) => (
-                <SelectItem key={pair} value={pair}>{pair}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          {isPairsError && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/30">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">
+                Unable to load Binance perpetual pairs. Check your connection and try again.
+              </p>
+            </div>
+          )}
+
+          <Popover open={pairSearchOpen} onOpenChange={setPairSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={pairSearchOpen}
+                className="w-full justify-between border-primary/30 hover:bg-primary/5 font-mono"
+                disabled={isPairsLoading}
+              >
+                {isPairsLoading ? (
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Loading pairs…
+                  </span>
+                ) : (
+                  <span>{selectedSymbol}</span>
+                )}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-0" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder="Search pair (e.g. BTC, ETH)…"
+                  value={pairSearch}
+                  onValueChange={setPairSearch}
+                />
+                <CommandList>
+                  {isPairsLoading && (
+                    <div className="p-3 space-y-2">
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                    </div>
+                  )}
+                  {!isPairsLoading && filteredPairs.length === 0 && (
+                    <CommandEmpty>No pairs found.</CommandEmpty>
+                  )}
+                  {!isPairsLoading && filteredPairs.length > 0 && (
+                    <CommandGroup heading={`${filteredPairs.length} pair${filteredPairs.length !== 1 ? 's' : ''}`}>
+                      {filteredPairs.map((pair) => (
+                        <CommandItem
+                          key={pair}
+                          value={pair}
+                          onSelect={() => handleSelectSymbol(pair)}
+                          className="font-mono text-sm cursor-pointer"
+                        >
+                          <Check
+                            className={`mr-2 h-4 w-4 ${selectedSymbol === pair ? 'opacity-100 text-primary' : 'opacity-0'}`}
+                          />
+                          {pair}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
+          {!isPairsLoading && !isPairsError && pairs && (
+            <p className="text-xs text-muted-foreground">
+              {pairs.length} Binance USD-M perpetual pairs available
+            </p>
+          )}
         </div>
 
         {/* Live Price Reference */}
@@ -164,7 +259,7 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
           {isPriceError ? (
             <p className="text-xs text-destructive">Unable to fetch live price. Using manual input.</p>
           ) : isPriceLoading ? (
-            <p className="text-xs text-muted-foreground animate-pulse">Fetching price...</p>
+            <p className="text-xs text-muted-foreground animate-pulse">Fetching price…</p>
           ) : livePrice !== null ? (
             <div className="flex items-center justify-between">
               <span className="text-lg font-bold text-primary">
@@ -186,7 +281,9 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
           {!isBracketError && maxAllowedLeverage !== null && (
             <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-primary/10">
               <span className="text-xs text-muted-foreground">Max leverage:</span>
-              <Badge variant="outline" className="text-xs border-primary/30 text-primary">{maxAllowedLeverage}x</Badge>
+              <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                {maxAllowedLeverage}x
+              </Badge>
               {maintMarginRatio !== null && (
                 <>
                   <span className="text-xs text-muted-foreground">Maint. margin:</span>
@@ -204,7 +301,8 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
           <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             <p className="text-xs text-amber-400">
-              Selected leverage ({leverage}x) exceeds the maximum allowed ({maxAllowedLeverage}x) for {selectedSymbol}.
+              Selected leverage ({leverage}x) exceeds the maximum allowed ({maxAllowedLeverage}x) for{' '}
+              {selectedSymbol}.
             </p>
           </div>
         )}
@@ -233,9 +331,7 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
             step={0.5}
             className="py-2"
           />
-          <p className="text-xs text-muted-foreground">
-            Recommended: 1-3% per trade
-          </p>
+          <p className="text-xs text-muted-foreground">Recommended: 1-3% per trade</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -243,14 +339,19 @@ export function PositionSizeCalculator({ onApply }: PositionSizeCalculatorProps)
             <Label htmlFor="entry">
               Entry Price
               {useLivePrice && (
-                <Badge variant="outline" className="ml-2 text-xs border-chart-1/40 text-chart-1">Live</Badge>
+                <Badge variant="outline" className="ml-2 text-xs border-chart-1/40 text-chart-1">
+                  Live
+                </Badge>
               )}
             </Label>
             <Input
               id="entry"
               type="number"
               value={entryPrice}
-              onChange={(e) => { setEntryPrice(e.target.value); setUseLivePrice(false); }}
+              onChange={(e) => {
+                setEntryPrice(e.target.value);
+                setUseLivePrice(false);
+              }}
               placeholder="50000"
             />
           </div>

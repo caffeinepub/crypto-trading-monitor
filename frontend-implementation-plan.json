@@ -1,29 +1,24 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove PositionEntryForm from Dashboard, keep only Import from Binance",
+  "title": "Fix Position Size Calculator to show all Binance USD-M Futures perpetual pairs",
   "requirements": [
     {
-      "id": "REQ-93",
-      "summary": "Remove the PositionEntryForm component from the Dashboard tab rendering, keeping only the Import from Binance button as the means to add positions",
+      "id": "REQ-94",
+      "summary": "Update PositionSizeCalculator to populate its asset selector with all Binance USD-M Futures perpetual pairs from the useBinancePairs hook, replacing any hardcoded or filtered list, with loading and error states",
       "acceptanceCriteria": [
-        "The PositionEntryForm is no longer visible in the Dashboard tab under any circumstance.",
-        "The 'Import from Binance' button remains present and functional in the Dashboard tab when credentials are configured.",
-        "The PositionDashboard (active positions list with real-time PnL) and TotalCapitalSummary card remain fully visible and functional.",
-        "No layout shifts or empty whitespace appear where the form previously existed.",
-        "The PositionEntryForm component file (frontend/src/components/PositionEntryForm.tsx) is not deleted — only its usage in DashboardTab.tsx is removed.",
-        "If no positions are present, the PositionDashboard empty state still prompts the user to import from Binance instead of adding manually."
+        "The PositionSizeCalculator asset dropdown/autocomplete is populated with every perpetual pair returned by useBinancePairs (contractType === 'PERPETUAL' from https://fapi.binance.com/fapi/v1/exchangeInfo) — no hardcoded or partial list.",
+        "Users can search and select any Binance USD-M Futures perpetual pair in the calculator.",
+        "A loading indicator is shown in the selector while pairs are being fetched.",
+        "An error message is shown if the Binance exchangeInfo endpoint fails to respond.",
+        "After selecting a pair, the live price and leverage bracket data are fetched for that specific symbol as before.",
+        "No regression in existing PositionSizeCalculator functionality (capital, risk %, stop-loss, leverage inputs and result display)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/DashboardTab.tsx",
+          "path": "frontend/src/components/PositionSizeCalculator.tsx",
           "operation": "modify",
-          "description": "Remove the PositionEntryForm component import and its JSX rendering from the DashboardTab component. Remove any state or handlers specific to the form (e.g., handleAddPosition, any form-related state variables). Ensure TotalCapitalSummary, PositionDashboard, and the Binance import button remain fully rendered and functional. Verify the layout remains clean with no empty whitespace where the form previously existed."
-        },
-        {
-          "path": "frontend/src/components/PositionDashboard.tsx",
-          "operation": "modify",
-          "description": "Update the empty state message in PositionDashboard to only reference importing from Binance (remove any mention of manually adding positions via a form). The empty state should guide users to use the Import from Binance button exclusively."
+          "description": "Integrate the existing useBinancePairs hook to populate the asset selector with all perpetual pairs. Replace any hardcoded symbol list with the hook's data. Add a loading state UI (spinner or skeleton) while pairs.isLoading is true. Display an error message when pairs.error is present. Ensure the selected symbol drives the existing live price fetch and leverage bracket fetch. Preserve all existing calculator inputs (capital, risk %, entry/stop-loss prices, leverage) and result display logic without regression."
         }
       ]
     }

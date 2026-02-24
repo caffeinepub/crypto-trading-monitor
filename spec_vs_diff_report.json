@@ -1,15 +1,14 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T21:44:22.122Z",
-  "summary": "The diff correctly implements REQ-93: DashboardTab.tsx no longer imports or renders PositionEntryForm, the 'Import from Binance' button remains present and conditional on credentials, TotalCapitalSummary and PositionDashboard remain intact, and PositionDashboard's empty state now prompts users to use 'Import from Binance' instead of manual entry. The PositionEntryForm component file is not deleted.",
+  "generatedAt": "2026-02-24T22:33:24.496Z",
+  "summary": "The diff modifies PositionSizeCalculator.tsx to integrate the useBinancePairs hook, adds a searchable pair selector with loading/error states, and wires the selected symbol to live price and leverage bracket fetches. All core REQ-94 acceptance criteria appear to be implemented.",
   "missing_requirements": [],
   "hallucinated_features": [],
-  "confidence": 0.97,
+  "confidence": 0.88,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/DashboardTab.tsx",
-    "frontend/src/components/PositionDashboard.tsx",
+    "frontend/src/components/PositionSizeCalculator.tsx",
     "project_state.json"
   ]
 }

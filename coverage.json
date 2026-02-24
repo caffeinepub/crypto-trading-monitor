@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T21:44:22.130Z",
+  "generatedAt": "2026-02-24T22:33:24.502Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -11,16 +11,14 @@
     "implemented": 1,
     "items": [
       {
-        "id": "REQ-93",
-        "summary": "Remove the PositionEntryForm component from the Dashboard tab (frontend/src/components/DashboardTab.tsx). The form and its associated 'Add Position' UI must no longer be rendered anywhere in the Dashboard tab. The only way to add positions to the dashboard must be via the existing 'Import from Binance' button. Do not remove the PositionEntryForm component file itself — only stop rendering it in DashboardTab.tsx.",
+        "id": "REQ-94",
+        "summary": "Update the asset selection input in the PositionSizeCalculator component (frontend/src/components/PositionSizeCalculator.tsx) to populate its dropdown/autocomplete with the full list of Binance USD-M Futures perpetual pairs fetched via the existing useBinancePairs hook (frontend/src/hooks/useBinancePairs.ts), which calls https://fapi.binance.com/fapi/v1/exchangeInfo and filters for contractType === 'PERPETUAL'. The selector must expose all perpetual pairs returned by that endpoint — not a hardcoded or pre-filtered subset. Display a loading state while pairs are being fetched and an error message if the fetch fails. The selected symbol must drive the live price fetch (https://fapi.binance.com/fapi/v1/ticker/price?symbol=SYMBOL) and leverage bracket fetch (https://fapi.binance.com/fapi/v1/leverageBracket?symbol=SYMBOL) already implemented in the component.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/DashboardTab.tsx",
-          "frontend/src/components/PositionDashboard.tsx"
+          "frontend/src/components/PositionSizeCalculator.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/DashboardTab.tsx",
-          "frontend/src/components/PositionDashboard.tsx"
+          "frontend/src/components/PositionSizeCalculator.tsx"
         ]
       }
     ]
@@ -30,8 +28,7 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/DashboardTab.tsx",
-    "frontend/src/components/PositionDashboard.tsx",
+    "frontend/src/components/PositionSizeCalculator.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
