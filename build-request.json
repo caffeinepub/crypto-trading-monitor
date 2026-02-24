@@ -1,0 +1,43 @@
+{
+  "kind": "build_request",
+  "title": "Add Direct APK/PWA Download Button to Force App Installation",
+  "projectName": "Crypto Position Monitor",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-36",
+      "text": "Replace or supplement the existing PWA install button (InstallButton.tsx) with a always-visible 'Download App' button in the app header that does not depend on the beforeinstallprompt event. When clicked, it should trigger a direct download of the PWA as a web app by: (1) still attempting the native browser install prompt if available via the existing usePWAInstall hook, and (2) as a fallback, showing a modal or tooltip with clear step-by-step instructions for manually installing the app on Chrome (Add to Home Screen via browser menu), Safari (Share → Add to Home Screen), and other major browsers. The button must always be visible regardless of browser install prompt availability.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "Ainda nao consigo instalar o aplicativo como ...  pwa completo. Pode adicionar um botao de baixar diretamente no aplicativo.? Para forçar o download"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A 'Download App' / 'Install App' button is always visible in the app header regardless of browser PWA support.",
+        "If the browser supports beforeinstallprompt, clicking the button triggers the native install prompt.",
+        "If the native install prompt is not available, clicking the button opens a modal or popover with manual installation instructions for Chrome, Safari, and Edge.",
+        "The manual install instructions include clear step-by-step guidance with browser-specific icons or labels.",
+        "The button styling is consistent with the golden theme and does not break the header layout on mobile or desktop.",
+        "The existing InstallButton.tsx component is updated or replaced so that it no longer conditionally hides itself when the install prompt is unavailable."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
+    "Reuse the existing usePWAInstall hook for native prompt detection; do not duplicate that logic.",
+    "Keep the existing golden color theme consistent for any new UI elements."
+  ],
+  "nonGoals": [
+    "Do not generate or distribute a native Android APK or iOS IPA file.",
+    "Do not change the service worker or manifest configuration.",
+    "Do not add any backend changes."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

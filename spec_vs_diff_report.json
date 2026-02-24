@@ -1,0 +1,39 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-24T11:30:49.862Z",
+  "summary": "The diff implements most of REQ-36: InstallButton.tsx is updated to always be visible (unless already installed), uses usePWAInstall hook for native prompt, and falls back to a new InstallInstructionsModal with browser-specific step-by-step instructions for Chrome, Safari, Edge, and Firefox. The button uses the golden theme. One acceptance criterion has a gap: the button still conditionally returns null when isInstalled is true, but the core requirement about not hiding when the install prompt is unavailable is satisfied.",
+  "missing_requirements": [
+    {
+      "id": "REQ-36",
+      "requirement": "The existing InstallButton.tsx component is updated or replaced so that it no longer conditionally hides itself when the install prompt is unavailable.",
+      "reason": "The updated InstallButton.tsx still returns null when isInstalled is true. The AC states the button should be 'always visible in the app header regardless of browser PWA support'. In standalone/installed mode the button is hidden entirely, which may conflict with the always-visible requirement.",
+      "evidence": [
+        "frontend/src/components/InstallButton.tsx"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Installation instructions are provided in Portuguese (Brazilian) rather than English",
+      "reason": "The BuildRequest does not specify a language for the manual installation instructions. All step-by-step text in InstallInstructionsModal.tsx is written in Portuguese, which was not requested.",
+      "evidence": [
+        "frontend/src/components/InstallInstructionsModal.tsx"
+      ]
+    },
+    {
+      "description": "Firefox (Android) browser guide included in the modal",
+      "reason": "REQ-36 specifies Chrome, Safari, and Edge as the required browsers for manual install instructions. A Firefox (Android) guide was added beyond what was requested.",
+      "evidence": [
+        "frontend/src/components/InstallInstructionsModal.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.82,
+  "changed_files": [
+    "frontend-file-summaries.txt",
+    "frontend/src/components/InstallButton.tsx",
+    "frontend/src/components/InstallInstructionsModal.tsx",
+    "project_state.json"
+  ]
+}

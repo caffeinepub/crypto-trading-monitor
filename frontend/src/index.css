@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --radius: 0.5rem;
+        /* Golden theme - Light mode */
+        --background: 0.98 0.01 60;
+        --foreground: 0.20 0.02 60;
+        --card: 1 0.005 60;
+        --card-foreground: 0.20 0.02 60;
+        --popover: 1 0.005 60;
+        --popover-foreground: 0.20 0.02 60;
+        /* Primary golden accent */
+        --primary: 0.75 0.15 75;
+        --primary-foreground: 0.15 0.02 60;
+        --secondary: 0.92 0.03 70;
+        --secondary-foreground: 0.25 0.02 60;
+        --muted: 0.95 0.02 65;
+        --muted-foreground: 0.50 0.03 60;
+        /* Accent golden */
+        --accent: 0.85 0.12 70;
+        --accent-foreground: 0.20 0.02 60;
+        --destructive: 0.55 0.22 25;
+        --destructive-foreground: 0.98 0.01 60;
+        --border: 0.88 0.05 65;
+        --input: 0.90 0.04 65;
+        --ring: 0.70 0.14 75;
+        /* Chart colors with golden tones */
+        --chart-1: 0.65 0.18 140;
+        --chart-2: 0.75 0.15 75;
+        --chart-3: 0.60 0.12 50;
+        --chart-4: 0.70 0.16 85;
+        --chart-5: 0.80 0.14 65;
+        --sidebar: 0.98 0.01 60;
+        --sidebar-foreground: 0.20 0.02 60;
+        --sidebar-primary: 0.75 0.15 75;
+        --sidebar-primary-foreground: 0.15 0.02 60;
+        --sidebar-accent: 0.92 0.03 70;
+        --sidebar-accent-foreground: 0.25 0.02 60;
+        --sidebar-border: 0.88 0.05 65;
+        --sidebar-ring: 0.70 0.14 75;
+        /* AI & Risk Management colors */
+        --sentiment-bullish: 0.65 0.18 140;
+        --sentiment-bearish: 0.55 0.22 25;
+        --sentiment-neutral: 0.50 0.03 60;
+        --suggestion-bg: 0.75 0.15 75 / 0.05;
+        --suggestion-border: 0.75 0.15 75 / 0.3;
+    }
+
+    .dark {
+        /* Golden theme - Dark mode */
+        --background: 0.15 0.02 60;
+        --foreground: 0.95 0.02 70;
+        --card: 0.20 0.03 60;
+        --card-foreground: 0.95 0.02 70;
+        --popover: 0.22 0.03 60;
+        --popover-foreground: 0.95 0.02 70;
+        /* Primary golden accent */
+        --primary: 0.78 0.16 75;
+        --primary-foreground: 0.15 0.02 60;
+        --secondary: 0.25 0.03 65;
+        --secondary-foreground: 0.95 0.02 70;
+        --muted: 0.28 0.03 60;
+        --muted-foreground: 0.65 0.04 65;
+        /* Accent golden */
+        --accent: 0.35 0.05 70;
+        --accent-foreground: 0.95 0.02 70;
+        --destructive: 0.60 0.20 25;
+        --destructive-foreground: 0.15 0.02 60;
+        --border: 0.30 0.04 65;
+        --input: 0.28 0.04 65;
+        --ring: 0.75 0.15 75;
+        /* Chart colors with golden tones */
+        --chart-1: 0.65 0.18 140;
+        --chart-2: 0.78 0.16 75;
+        --chart-3: 0.60 0.12 50;
+        --chart-4: 0.72 0.16 85;
+        --chart-5: 0.80 0.14 65;
+        --sidebar: 0.18 0.03 60;
+        --sidebar-foreground: 0.95 0.02 70;
+        --sidebar-primary: 0.78 0.16 75;
+        --sidebar-primary-foreground: 0.15 0.02 60;
+        --sidebar-accent: 0.25 0.03 65;
+        --sidebar-accent-foreground: 0.95 0.02 70;
+        --sidebar-border: 0.30 0.04 65;
+        --sidebar-ring: 0.75 0.15 75;
+        /* AI & Risk Management colors */
+        --sentiment-bullish: 0.65 0.18 140;
+        --sentiment-bearish: 0.60 0.20 25;
+        --sentiment-neutral: 0.65 0.04 65;
+        --suggestion-bg: 0.78 0.16 75 / 0.08;
+        --suggestion-border: 0.78 0.16 75 / 0.4;
+    }
+
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+@layer utilities {
+    .animate-pulse-slow {
+        animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    .golden-glow {
+        box-shadow: 0 0 20px oklch(0.75 0.15 75 / 0.3);
+    }
+    
+    .tech-pattern {
+        background-image: 
+            linear-gradient(90deg, oklch(var(--primary) / 0.03) 1px, transparent 1px),
+            linear-gradient(oklch(var(--primary) / 0.03) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+}
+
+/* PWA Standalone mode adjustments */
+@media (display-mode: standalone) {
+    body {
+        /* Add safe area insets for notched devices */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+    
+    /* Ensure header stays visible in standalone mode */
+    header {
+        position: sticky;
+        top: env(safe-area-inset-top);
+    }
+}
+
+/* iOS specific adjustments */
+@supports (-webkit-touch-callout: none) {
+    @media (display-mode: standalone) {
+        body {
+            padding-top: max(env(safe-area-inset-top), 20px);
+        }
+    }
+}

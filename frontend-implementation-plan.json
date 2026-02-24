@@ -1,0 +1,36 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Add Direct APK/PWA Download Button to Force App Installation",
+  "requirements": [
+    {
+      "id": "REQ-36",
+      "summary": "Replace or supplement the existing PWA install button with an always-visible 'Download App' button that provides both native install prompt support and fallback manual installation instructions for all major browsers",
+      "acceptanceCriteria": [
+        "A 'Download App' / 'Install App' button is always visible in the app header regardless of browser PWA support.",
+        "If the browser supports beforeinstallprompt, clicking the button triggers the native install prompt.",
+        "If the native install prompt is not available, clicking the button opens a modal or popover with manual installation instructions for Chrome, Safari, and Edge.",
+        "The manual install instructions include clear step-by-step guidance with browser-specific icons or labels.",
+        "The button styling is consistent with the golden theme and does not break the header layout on mobile or desktop.",
+        "The existing InstallButton.tsx component is updated or replaced so that it no longer conditionally hides itself when the install prompt is unavailable."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/InstallButton.tsx",
+          "operation": "modify",
+          "description": "Remove the conditional rendering that hides the button when isInstallable is false. Update the button to always render in the UI. When clicked, attempt to trigger the native install prompt via usePWAInstall hook; if the prompt fails or is unavailable, programmatically open a modal dialog with manual installation instructions. Add state management for controlling the instruction modal visibility. Ensure the button maintains golden theme styling and responsive layout for mobile and desktop."
+        },
+        {
+          "path": "frontend/src/components/InstallInstructionsModal.tsx",
+          "operation": "create",
+          "description": "Create a modal component that displays browser-specific manual PWA installation instructions. Include step-by-step guides for Chrome (Add to Home Screen via browser menu), Safari (Share button → Add to Home Screen), Edge (Install app icon in address bar), and Firefox (Home screen icon in menu). Use clear headings, numbered steps, and consider adding browser logos or icons for visual clarity. The modal should have a close button and be dismissible by clicking outside. Style consistently with the golden theme using Tailwind and existing design tokens. Accept open/onClose props for external control."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Ensure the InstallButton component remains wired into the header section of the app layout. Verify that the button's always-visible behavior does not break the existing sticky header layout on mobile or desktop viewports. No changes to the wolf/crypto logo or other header elements are required unless layout adjustments are needed to accommodate the updated button."
+        }
+      ]
+    }
+  ]
+}

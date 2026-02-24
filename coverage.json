@@ -1,0 +1,41 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-24T11:30:49.866Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 1,
+    "implemented": 1,
+    "items": [
+      {
+        "id": "REQ-36",
+        "summary": "Replace or supplement the existing PWA install button (InstallButton.tsx) with a always-visible 'Download App' button in the app header that does not depend on the beforeinstallprompt event. When clicked, it should trigger a direct download of the PWA as a web app by: (1) still attempting the native browser install prompt if available via the existing usePWAInstall hook, and (2) as a fallback, showing a modal or tooltip with clear step-by-step instructions for manually installing the app on Chrome (Add to Home Screen via browser menu), Safari (Share → Add to Home Screen), and other major browsers. The button must always be visible regardless of browser install prompt availability.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/InstallButton.tsx",
+          "frontend/src/components/InstallInstructionsModal.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/InstallButton.tsx",
+          "frontend/src/components/InstallInstructionsModal.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/components/InstallButton.tsx",
+    "frontend/src/components/InstallInstructionsModal.tsx",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

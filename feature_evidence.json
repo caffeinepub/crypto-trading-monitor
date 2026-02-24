@@ -1,0 +1,24 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-replace-or-supplement-the-existing-pwa-install-button-installbutton-tsx-with-a-always-visible-download-app-button-in-the-app-header-that-does-not-depend-on-the-beforeinstallprompt-event-when-clicked-it-should-trigger-a-direct-download-of-the-pwa-as-a-web-app-by-1-still-attempting-the-native-browser-install-prompt-if-available-via-the-existing-usepwainstall-hook-and-2-as-a-fallback-showing-a-modal-or-tooltip-with-clear-step-by-step-instructions-for-manually-installing-the-app-on-chrome-add-to-home-screen-via-browser-menu-safari-share-add-to-home-screen-and-other-major-browsers-the-button-must-always-be-visible-regardless-of-browser-install-prompt-availability",
+      "featureTitle": "Replace or supplement the existing PWA install button (InstallButton.tsx) with a always-visible 'Download App' button in the app header that does not depend on the beforeinstallprompt event. When clicked, it should trigger a direct download of the PWA as a web app by: (1) still attempting the native browser install prompt if available via the existing usePWAInstall hook, and (2) as a fallback, showing a modal or tooltip with clear step-by-step instructions for manually installing the app on Chrome (Add to Home Screen via browser menu), Safari (Share → Add to Home Screen), and other major browsers. The button must always be visible regardless of browser install prompt availability.",
+      "files": [
+        "frontend/src/components/InstallButton.tsx",
+        "frontend/src/components/InstallInstructionsModal.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-36"
+      ],
+      "confidence": "high"
+    }
+  ]
+}
