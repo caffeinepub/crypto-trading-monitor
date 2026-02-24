@@ -1,55 +1,15 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T20:37:29.763Z",
-  "summary": "The diff implements all four requirements (REQ-89 through REQ-92) with substantial coverage. Most acceptance criteria are met. One notable gap is that the usePortfolioExposure hook uses a hardcoded maintenance margin ratio (0.004) instead of fetching it from the leverageBracket API for each position, which is required by REQ-90. REQ-92's LiveRiskMetricsCard does fetch leverage brackets properly. The ScenarioSimulator ATR presets only use the primary/first symbol rather than per-position klines, which partially satisfies REQ-91. The stale data indicator for failed price fetches in REQ-90 is implemented via a priceStale flag. Overall implementation is largely complete with minor deviations.",
-  "missing_requirements": [
-    {
-      "id": "REQ-90",
-      "requirement": "Distance to estimated liquidation price should use maintenance margin rates fetched from https://fapi.binance.com/fapi/v1/leverageBracket for each position",
-      "reason": "The usePortfolioExposure hook computes liquidation price using a hardcoded maintMarginRatio of 0.004 rather than fetching the actual per-symbol maintenance margin rate from the leverageBracket API endpoint. No leverageBracket fetch is present in usePortfolioExposure.ts.",
-      "evidence": [
-        "frontend/src/hooks/usePortfolioExposure.ts"
-      ]
-    },
-    {
-      "id": "REQ-91",
-      "requirement": "ATR-based volatility presets should be fetched for each position's symbol",
-      "reason": "ScenarioSimulator only fetches klines for the first/primary symbol (primarySymbol = symbols[0]) and uses those ATR values as representative for all positions, rather than fetching per-position klines for each symbol as required.",
-      "evidence": [
-        "frontend/src/components/ScenarioSimulator.tsx"
-      ]
-    }
-  ],
-  "hallucinated_features": [
-    {
-      "description": "fetchPerpetualPairs and symbol selector dropdown added to PositionSizeCalculator",
-      "reason": "The build request only required fetching live price and leverage bracket data for the selected symbol in PositionSizeCalculator. Adding a full perpetual pairs dropdown with fetchPerpetualPairs was not requested.",
-      "evidence": [
-        "frontend/src/components/PositionSizeCalculator.tsx",
-        "frontend/src/services/binanceApi.ts"
-      ]
-    },
-    {
-      "description": "useLivePrice toggle button in PositionSizeCalculator",
-      "reason": "The requirement says to display the live price as a reference alongside the entry price field, but the diff implements a toggle to apply the live price to the entry field. This interaction pattern was not specified in the requirements.",
-      "evidence": [
-        "frontend/src/components/PositionSizeCalculator.tsx"
-      ]
-    }
-  ],
-  "confidence": 0.78,
+  "generatedAt": "2026-02-24T21:44:22.122Z",
+  "summary": "The diff correctly implements REQ-93: DashboardTab.tsx no longer imports or renders PositionEntryForm, the 'Import from Binance' button remains present and conditional on credentials, TotalCapitalSummary and PositionDashboard remain intact, and PositionDashboard's empty state now prompts users to use 'Import from Binance' instead of manual entry. The PositionEntryForm component file is not deleted.",
+  "missing_requirements": [],
+  "hallucinated_features": [],
+  "confidence": 0.97,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/components/LiveRiskMetricsCard.tsx",
-    "frontend/src/components/PortfolioExposureDashboard.tsx",
-    "frontend/src/components/PositionSizeCalculator.tsx",
-    "frontend/src/components/RiskManagementTab.tsx",
-    "frontend/src/components/ScenarioSimulator.tsx",
-    "frontend/src/hooks/usePortfolioExposure.ts",
-    "frontend/src/services/binanceApi.ts",
-    "frontend/src/types/binanceApi.ts",
+    "frontend/src/components/DashboardTab.tsx",
+    "frontend/src/components/PositionDashboard.tsx",
     "project_state.json"
   ]
 }

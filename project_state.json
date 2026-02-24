@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 49,
+  "projectStateVersion": 51,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -758,6 +758,14 @@
         "REQ-92"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-remove-the-positionentryform-component-from-the-dashboard-tab-frontend-src-components-dashboardtab-tsx-the-form-and-its-associated-add-position-ui-must-no-longer-be-rendered-anywhere-in-the-dashboard-tab-the-only-way-to-add-positions-to-the-dashboard-must-be-via-the-existing-import-from-binance-button-do-not-remove-the-positionentryform-component-file-itself-only-stop-rendering-it-in-dashboardtab-tsx",
+      "title": "Remove the PositionEntryForm component from the Dashboard tab (frontend/src/components/DashboardTab.tsx). The form and its associated 'Add Position' UI must no longer be rendered anywhere in the Dashboard tab. The only way to add positions to the dashboard must be via the existing 'Import from Binance' button. Do not remove the PositionEntryForm component file itself — only stop rendering it in DashboardTab.tsx.",
+      "reqIds": [
+        "REQ-93"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -920,6 +928,12 @@
     {
       "id": "AR-27",
       "summary": "Update the Risk Management tab to use real asset data from Binance (live prices, volatility, leverage tiers, liquidation prices) for more accurate position size calculations, portfolio exposure, and scenario simulations",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Remove the manual position entry form (PositionEntryForm) from the Dashboard, keeping only the 'Import from Binance' button as the way to add positions",
       "reqIds": [],
       "status": "pending"
     }

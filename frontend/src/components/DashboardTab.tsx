@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Position } from '../types/position';
 import { PositionWithPrice } from '../types/position';
-import { PositionEntryForm } from './PositionEntryForm';
 import { PositionDashboard } from './PositionDashboard';
 import { TotalCapitalSummary } from './TotalCapitalSummary';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,6 @@ export function DashboardTab({
   onUpdatePosition,
 }: DashboardTabProps) {
   // Reactive credential detection — updates immediately when credentials are saved/cleared
-  // Listens to 'credential-change' and 'credentialsChanged' custom DOM events
   const [credentialsAvailable, setCredentialsAvailable] = useState<boolean>(() => hasCredentials());
   const [isImporting, setIsImporting] = useState(false);
 
@@ -35,7 +33,6 @@ export function DashboardTab({
       setCredentialsAvailable(hasCredentials());
     };
 
-    // Listen to both event names for compatibility
     window.addEventListener('credential-change', handler);
     window.addEventListener('credentialsChanged', handler);
 
@@ -43,7 +40,7 @@ export function DashboardTab({
       window.removeEventListener('credential-change', handler);
       window.removeEventListener('credentialsChanged', handler);
     };
-  }, []); // Empty dependency array — register once only
+  }, []);
 
   const handleImportFromBinance = useCallback(async () => {
     setIsImporting(true);
@@ -71,7 +68,6 @@ export function DashboardTab({
       {/* Header row with Import button */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Posições Abertas</h2>
-        {/* Import from Binance button — visible as soon as credentials are saved */}
         {credentialsAvailable && (
           <Button
             variant="outline"
@@ -90,9 +86,6 @@ export function DashboardTab({
         )}
       </div>
 
-      {/* Position Entry Form */}
-      <PositionEntryForm onSubmit={onAddPosition} onCancel={() => {}} />
-
       {/* Position Dashboard */}
       <PositionDashboard
         positions={positions}
@@ -101,7 +94,6 @@ export function DashboardTab({
           if (pos) onUpdatePosition({ ...pos, ...updates });
         }}
         onDelete={onRemovePosition}
-        onAddNew={() => {}}
       />
     </div>
   );
