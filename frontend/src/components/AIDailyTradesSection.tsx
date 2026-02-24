@@ -14,6 +14,7 @@ export function AIDailyTradesSection() {
   const queryClient = useQueryClient();
   const { clearTrades } = useAITradeStorage();
 
+  // useAITradeGeneration now returns a UseQueryResult<AITrade[]>
   const {
     data: trades,
     isLoading: isGenerating,

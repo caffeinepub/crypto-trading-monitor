@@ -1,199 +1,271 @@
-import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Key, Shield, Wifi, WifiOff, Loader2, Trash2, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { saveCredentials, clearCredentials, getStoredCredentials } from '../utils/binanceAuth';
+import { Eye, EyeOff, Save, Trash2, Wifi, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { getCredentials, saveCredentials, clearCredentials } from '../utils/liveTradingStorage';
 import { authenticatedFetch } from '../utils/binanceAuth';
-import { BinanceAccountResponse } from '../types/binanceApi';
 import { toast } from 'sonner';
 
-type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error';
+// Named constant for test connection timeout
+const CONNECTION_TEST_TIMEOUT_MS = 15000;
+
+type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'invalid' | 'timeout' | 'error';
 
 export function BinanceCredentialsPanel() {
   const [apiKey, setApiKey] = useState('');
-  const [secret, setSecret] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
   const [showSecret, setShowSecret] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
-  const [hasStored, setHasStored] = useState(false);
+  const [timeoutMessage, setTimeoutMessage] = useState('');
 
+  // Load existing credentials on mount
   useEffect(() => {
-    const creds = getStoredCredentials();
+    const creds = getCredentials();
     if (creds) {
-      setApiKey(creds.apiKey);
-      setSecret(creds.secret);
-      setHasStored(true);
+      setApiKey(creds.apiKey || '');
+      // Show masked secret if already saved
+      setApiSecret(creds.apiSecret ? '••••••••••••••••' : '');
     }
   }, []);
 
   const handleSave = () => {
-    if (!apiKey.trim() || !secret.trim()) {
-      toast.error('Por favor, preencha a API Key e o Secret.');
+    if (!apiKey.trim()) {
+      toast.error('API Key é obrigatória');
       return;
     }
-    saveCredentials(apiKey.trim(), secret.trim());
-    setHasStored(true);
-    setConnectionStatus('idle');
-    toast.success('Credenciais salvas com sucesso!', {
-      description: 'Suas chaves estão armazenadas localmente no navegador.',
-    });
+
+    setIsSaving(true);
+    try {
+      // If secret is still masked, keep the existing secret
+      const existing = getCredentials();
+      const secretToSave =
+        apiSecret === '••••••••••••••••' && existing
+          ? existing.apiSecret
+          : apiSecret.trim();
+
+      if (!secretToSave) {
+        toast.error('API Secret é obrigatório');
+        return;
+      }
+
+      saveCredentials({ apiKey: apiKey.trim(), apiSecret: secretToSave });
+      // Dispatch credential-change event so all listeners update reactively
+      window.dispatchEvent(new CustomEvent('credential-change'));
+      setApiSecret('••••••••••••••••');
+      toast.success('Credenciais salvas com sucesso');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleClear = () => {
     clearCredentials();
     setApiKey('');
-    setSecret('');
-    setHasStored(false);
+    setApiSecret('');
     setConnectionStatus('idle');
-    toast.info('Credenciais removidas.');
+    setTimeoutMessage('');
+    // Dispatch credential-change event so all listeners update reactively
+    window.dispatchEvent(new CustomEvent('credential-change'));
+    toast.info('Credenciais removidas');
   };
 
   const handleTestConnection = async () => {
-    if (!apiKey.trim() || !secret.trim()) {
-      toast.error('Salve as credenciais antes de testar a conexão.');
+    const creds = getCredentials();
+    if (!creds) {
+      toast.error('Salve suas credenciais antes de testar');
       return;
     }
 
-    // Temporarily save to test
-    saveCredentials(apiKey.trim(), secret.trim());
     setConnectionStatus('testing');
+    setTimeoutMessage('');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TEST_TIMEOUT_MS);
 
     try {
-      await authenticatedFetch(
+      const response = await authenticatedFetch(
         'https://fapi.binance.com/fapi/v2/account',
-        'GET'
-      ) as BinanceAccountResponse;
-      setConnectionStatus('connected');
-      toast.success('✅ Conexão com a Binance estabelecida!', {
-        description: 'Suas credenciais são válidas e a conta está acessível.',
-      });
-    } catch (err) {
-      setConnectionStatus('error');
-      const errMsg = err instanceof Error ? err.message : String(err);
-      toast.error('❌ Falha na conexão com a Binance', {
-        description: errMsg,
-      });
+        creds,
+        { signal: controller.signal }
+      );
+
+      if (response.ok) {
+        setConnectionStatus('connected');
+        toast.success('Conexão estabelecida com sucesso!');
+      } else if (response.status === 401 || response.status === 403) {
+        setConnectionStatus('invalid');
+        toast.error('Credenciais inválidas');
+      } else {
+        setConnectionStatus('error');
+        toast.error(`Erro ao conectar: HTTP ${response.status}`);
+      }
+    } catch (err: unknown) {
+      const isAbort =
+        (err instanceof Error && err.name === 'AbortError') ||
+        (typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code: string }).code === 'REQUEST_TIMEOUT');
+
+      if (isAbort) {
+        setConnectionStatus('timeout');
+        setTimeoutMessage(
+          'Tempo limite atingido — o servidor não respondeu a tempo. Suas credenciais podem ainda ser válidas.'
+        );
+      } else {
+        setConnectionStatus('error');
+        toast.error('Erro de conexão. Verifique sua rede.');
+      }
+    } finally {
+      // Always clear the timeout and re-enable the button
+      clearTimeout(timeoutId);
+    }
+  };
+
+  const hasExistingCredentials = !!getCredentials();
+
+  const renderConnectionBadge = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return (
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Conectado
+          </Badge>
+        );
+      case 'invalid':
+        return (
+          <Badge className="bg-destructive/20 text-destructive border-destructive/30 flex items-center gap-1">
+            <XCircle className="w-3 h-3" />
+            Credenciais inválidas
+          </Badge>
+        );
+      case 'timeout':
+        return (
+          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            Tempo limite
+          </Badge>
+        );
+      case 'error':
+        return (
+          <Badge className="bg-destructive/20 text-destructive border-destructive/30 flex items-center gap-1">
+            <XCircle className="w-3 h-3" />
+            Erro de conexão
+          </Badge>
+        );
+      default:
+        return null;
     }
   };
 
   return (
-    <div className="space-y-5">
-      {/* Security Notice */}
-      <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
-        <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          <span className="font-semibold text-foreground">Segurança:</span> Suas chaves são
-          armazenadas <strong>apenas localmente</strong> no seu navegador (localStorage) e{' '}
-          <strong>nunca são enviadas</strong> para nenhum servidor externo. Use chaves com
-          permissão apenas de <em>Futures Trading</em> e sem permissão de saque.
-        </p>
-      </div>
-
-      {/* API Key */}
-      <div className="space-y-2">
-        <Label htmlFor="binance-api-key" className="text-sm font-medium flex items-center gap-2">
-          <Key className="w-3.5 h-3.5 text-primary" />
-          API Key
-        </Label>
-        <Input
-          id="binance-api-key"
-          type="text"
-          placeholder="Cole sua Binance Futures API Key aqui..."
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="font-mono text-sm bg-card border-primary/20 focus:border-primary/50"
-        />
-      </div>
-
-      {/* Secret Key */}
-      <div className="space-y-2">
-        <Label htmlFor="binance-secret" className="text-sm font-medium flex items-center gap-2">
-          <Key className="w-3.5 h-3.5 text-primary" />
-          Secret Key
-        </Label>
-        <div className="relative">
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="api-key" className="text-sm font-medium">
+            API Key
+          </Label>
           <Input
-            id="binance-secret"
-            type={showSecret ? 'text' : 'password'}
-            placeholder="Cole seu Secret Key aqui..."
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            className="font-mono text-sm pr-10 bg-card border-primary/20 focus:border-primary/50"
+            id="api-key"
+            type="text"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Insira sua Binance API Key"
+            className="font-mono text-sm"
           />
-          <button
-            type="button"
-            onClick={() => setShowSecret(!showSecret)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="api-secret" className="text-sm font-medium">
+            API Secret
+          </Label>
+          <div className="relative">
+            <Input
+              id="api-secret"
+              type={showSecret ? 'text' : 'password'}
+              value={apiSecret}
+              onChange={(e) => setApiSecret(e.target.value)}
+              placeholder="Insira sua Binance API Secret"
+              className="font-mono text-sm pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowSecret(!showSecret)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Connection Status Badge */}
-      {connectionStatus !== 'idle' && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Status:</span>
-          {connectionStatus === 'testing' && (
-            <Badge variant="secondary" className="gap-1.5">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Testando...
-            </Badge>
-          )}
-          {connectionStatus === 'connected' && (
-            <Badge className="gap-1.5 bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
-              <Wifi className="w-3 h-3" />
-              Conectado
-            </Badge>
-          )}
-          {connectionStatus === 'error' && (
-            <Badge variant="destructive" className="gap-1.5">
-              <WifiOff className="w-3 h-3" />
-              Credenciais inválidas
-            </Badge>
-          )}
-        </div>
-      )}
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2 pt-1">
+      <div className="flex flex-wrap gap-2">
         <Button
           onClick={handleSave}
+          disabled={isSaving}
           size="sm"
-          className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+          className="flex items-center gap-1.5"
         >
-          <Save className="w-3.5 h-3.5" />
-          Salvar Credenciais
+          {isSaving ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Save className="w-3.5 h-3.5" />
+          )}
+          Salvar
         </Button>
 
         <Button
           onClick={handleTestConnection}
-          size="sm"
+          disabled={connectionStatus === 'testing' || !hasExistingCredentials}
           variant="outline"
-          disabled={connectionStatus === 'testing'}
-          className="gap-2 border-primary/30 hover:bg-primary/10"
+          size="sm"
+          className="flex items-center gap-1.5"
         >
           {connectionStatus === 'testing' ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Wifi className="w-3.5 h-3.5" />
           )}
-          Testar Conexão
+          {connectionStatus === 'testing' ? 'Testando...' : 'Testar Conexão'}
         </Button>
 
-        {hasStored && (
+        {hasExistingCredentials && (
           <Button
             onClick={handleClear}
+            variant="ghost"
             size="sm"
-            variant="outline"
-            className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+            className="flex items-center gap-1.5 text-destructive hover:text-destructive"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Limpar Credenciais
+            Remover
           </Button>
         )}
+      </div>
+
+      {/* Connection Status Badge */}
+      {connectionStatus !== 'idle' && connectionStatus !== 'testing' && (
+        <div className="flex flex-col gap-1.5">
+          {renderConnectionBadge()}
+          {connectionStatus === 'timeout' && timeoutMessage && (
+            <p className="text-xs text-amber-400/80">{timeoutMessage}</p>
+          )}
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="p-3 rounded-lg bg-muted/30 border border-border">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <strong className="text-foreground">Permissões necessárias:</strong> Habilite apenas{' '}
+          <em>Futures Trading</em> na sua API Key. Nunca habilite saques.
+        </p>
       </div>
     </div>
   );
 }
+
+export default BinanceCredentialsPanel;

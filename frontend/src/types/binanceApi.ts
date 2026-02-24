@@ -63,6 +63,28 @@ export interface BinancePositionInfo {
   updateTime: number;
 }
 
+/**
+ * Response item from GET /fapi/v2/positionRisk
+ * Represents a single position in the Binance USD-M Futures account.
+ */
+export interface BinancePositionRisk {
+  symbol: string;
+  positionAmt: string;       // positive = Long, negative = Short, "0" = no position
+  entryPrice: string;
+  markPrice: string;
+  unRealizedProfit: string;
+  liquidationPrice: string;
+  leverage: string;
+  maxNotionalValue: string;
+  marginType: string;
+  isolatedMargin: string;
+  isAutoAddMargin: string;
+  positionSide: string;      // "BOTH" | "LONG" | "SHORT"
+  notional: string;
+  isolatedWallet: string;
+  updateTime: number;
+}
+
 export type OrderSide = 'BUY' | 'SELL';
 export type OrderType = 'MARKET' | 'LIMIT' | 'STOP_MARKET' | 'TAKE_PROFIT_MARKET';
 export type OrderStatus = 'NEW' | 'FILLED' | 'CANCELED' | 'EXPIRED' | 'PARTIALLY_FILLED';

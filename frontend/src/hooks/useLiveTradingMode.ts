@@ -1,88 +1,113 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import {
   isLiveTradingEnabled,
   setLiveTradingEnabled,
-  hasValidCredentials,
-  isLiveTradingReady,
+  getCredentials,
 } from '../utils/liveTradingStorage';
+import { authenticatedFetch } from '../utils/binanceAuth';
 
-export interface LiveTradingState {
-  isLiveMode: boolean;
-  isReady: boolean;
-  hasCredentials: boolean;
-  isValidating: boolean;
-  toggleLiveTrading: (enabled: boolean) => Promise<void>;
-}
+// Named constant for credential validation timeout
+const CREDENTIAL_VALIDATION_TIMEOUT_MS = 15000;
 
-export function useLiveTradingMode(): LiveTradingState {
-  const [isLiveMode, setIsLiveMode] = useState<boolean>(() => isLiveTradingEnabled());
-  const [hasCredentials, setHasCredentials] = useState<boolean>(() => hasValidCredentials());
-  const [isValidating, setIsValidating] = useState(false);
-  // Use a ref to track if we're currently toggling to prevent re-entrant calls
-  const isTogglingRef = useRef(false);
+export function useLiveTradingMode() {
+  const [isLiveTrading, setIsLiveTrading] = useState<boolean>(() => isLiveTradingEnabled());
 
-  // Stable refresh function that reads from localStorage directly
-  // Using useRef to keep a stable reference that never changes
-  const refreshStateRef = useRef(() => {
-    setIsLiveMode(isLiveTradingEnabled());
-    setHasCredentials(hasValidCredentials());
-  });
+  // Use a ref for the event handler to avoid re-registering on every render
+  const handlerRef = useRef<(() => void) | null>(null);
 
-  // Register event listeners once on mount, never re-register
   useEffect(() => {
-    const handleLiveTradingChanged = () => {
-      refreshStateRef.current();
+    // Register the live-trading-change listener exactly once
+    const handler = () => {
+      setIsLiveTrading(isLiveTradingEnabled());
     };
-    const handleCredentialsChanged = () => {
-      refreshStateRef.current();
-    };
+    handlerRef.current = handler;
 
-    window.addEventListener('liveTradingChanged', handleLiveTradingChanged);
-    window.addEventListener('credentialsChanged', handleCredentialsChanged);
+    window.addEventListener('live-trading-change', handler);
+    // Also listen to legacy event name for backward compatibility
+    window.addEventListener('liveTradingChanged', handler);
 
     return () => {
-      window.removeEventListener('liveTradingChanged', handleLiveTradingChanged);
-      window.removeEventListener('credentialsChanged', handleCredentialsChanged);
+      window.removeEventListener('live-trading-change', handler);
+      window.removeEventListener('liveTradingChanged', handler);
     };
-  }, []); // empty deps — register once, never re-register
+  }, []); // Empty dependency array — register once only
 
-  const toggleLiveTrading = useCallback(async (enabled: boolean) => {
-    // Prevent re-entrant calls
-    if (isTogglingRef.current) return;
-    isTogglingRef.current = true;
-    setIsValidating(true);
+  const validateCredentials = useCallback(async (): Promise<boolean> => {
+    const creds = getCredentials();
+    if (!creds) {
+      toast.error('Configure suas credenciais da Binance antes de ativar o Live Trading.');
+      return false;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CREDENTIAL_VALIDATION_TIMEOUT_MS);
 
     try {
-      if (enabled) {
-        // Validate credentials asynchronously before enabling
-        const credentialsValid = hasValidCredentials();
-        if (!credentialsValid) {
-          // Don't enable live trading without credentials
-          setIsValidating(false);
-          isTogglingRef.current = false;
-          throw new Error('No valid Binance credentials found. Please configure your API keys first.');
-        }
+      const response = await authenticatedFetch(
+        'https://fapi.binance.com/fapi/v2/account',
+        creds,
+        { signal: controller.signal }
+      );
+
+      if (response.ok) {
+        return true;
+      } else if (response.status === 401 || response.status === 403) {
+        toast.error('Credenciais inválidas. Verifique sua API Key e Secret.');
+        return false;
+      } else {
+        toast.warning(`Aviso: servidor retornou HTTP ${response.status}. Ativando mesmo assim.`);
+        return true;
+      }
+    } catch (err: unknown) {
+      const isTimeout =
+        (err instanceof Error && err.name === 'AbortError') ||
+        (typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code: string }).code === 'REQUEST_TIMEOUT');
+
+      if (isTimeout) {
+        // On timeout, still activate but warn the user
+        toast.warning(
+          'Verificação de credenciais expirou — Live Trading ativado sem verificação completa.',
+          { duration: 6000 }
+        );
+        return true;
       }
 
-      // Write to localStorage (event dispatch is deferred via setTimeout in storage util)
-      setLiveTradingEnabled(enabled);
-
-      // Update local state immediately without waiting for the event
-      setIsLiveMode(enabled);
-      setHasCredentials(hasValidCredentials());
+      // Network or other error — still activate with warning
+      toast.warning('Não foi possível verificar credenciais. Ativando Live Trading mesmo assim.');
+      return true;
     } finally {
-      setIsValidating(false);
-      isTogglingRef.current = false;
+      clearTimeout(timeoutId);
     }
-  }, []); // stable — no deps that change
+  }, []);
 
-  const isReady = isLiveMode && hasCredentials;
+  const toggleLiveTrading = useCallback(async (forceValue?: boolean): Promise<void> => {
+    const newValue = forceValue !== undefined ? forceValue : !isLiveTradingEnabled();
+
+    if (!newValue) {
+      // Disabling — instant, no async validation
+      setLiveTradingEnabled(false);
+      setIsLiveTrading(false);
+      toast.info('Live Trading desativado.');
+      return;
+    }
+
+    // Enabling — validate credentials first (with timeout)
+    const isValid = await validateCredentials();
+
+    if (isValid) {
+      setLiveTradingEnabled(true);
+      setIsLiveTrading(true);
+      toast.success('Live Trading ativado! Ordens serão enviadas à Binance Futures.');
+    }
+    // If not valid, validateCredentials already showed the error toast
+  }, [validateCredentials]);
 
   return {
-    isLiveMode,
-    isReady,
-    hasCredentials,
-    isValidating,
+    isLiveTrading,
     toggleLiveTrading,
   };
 }

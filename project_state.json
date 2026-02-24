@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 35,
+  "projectStateVersion": 45,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -18,7 +18,8 @@
     "PWA installation via beforeinstallprompt not working reliably; user requests a direct download/install button to force the process",
     "AI trades hitting TP1/TP2/TP3 are not executing fictitious orders or advancing risk management steps (e.g., moving SL to breakeven after TP1)",
     "Settings/API key gear icon button in the header is unresponsive when clicked — the BinanceCredentialsPanel settings section does not open",
-    "Enabling 'Live Trade Mode' causes the application to freeze/hang — the only recovery is closing the app; orders are not being sent to Binance"
+    "Enabling 'Live Trade Mode' causes the application to freeze/hang — the only recovery is closing the app; orders are not being sent to Binance",
+    "'Import from Binance' button not visible in Dashboard tab even when Binance credentials are configured and connection test passes"
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -549,6 +550,150 @@
         "REQ-66"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-remove-the-daily-utc-reset-logic-from-the-useaitradegeneration-hook-frontend-src-hooks-useaitradegeneration-ts-and-useaitradestorage-hook-frontend-src-hooks-useaitradestorage-ts-trades-stored-under-the-key-ai-daily-trades-in-localstorage-must-no-longer-be-invalidated-or-regenerated-based-on-a-utc-date-comparison-the-stored-date-field-should-be-removed-or-ignored-trades-must-persist-indefinitely-until-they-are-individually-closed-tp-hit-sl-hit-or-reversal-guard-and-replaced-by-the-auto-regeneration-logic-already-in-place",
+      "title": "Remove the daily UTC reset logic from the useAITradeGeneration hook (frontend/src/hooks/useAITradeGeneration.ts) and useAITradeStorage hook (frontend/src/hooks/useAITradeStorage.ts). Trades stored under the key 'ai_daily_trades' in localStorage must no longer be invalidated or regenerated based on a UTC date comparison. The stored date field should be removed or ignored. Trades must persist indefinitely until they are individually closed (TP Hit, SL Hit, or Reversal Guard) and replaced by the auto-regeneration logic already in place.",
+      "reqIds": [
+        "REQ-67"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-frontend-service-function-in-frontend-src-services-binanceorderservice-ts-or-a-dedicated-frontend-src-services-binancepositionservice-ts-that-fetches-the-user-s-currently-open-positions-from-the-binance-usd-m-futures-account-endpoint-https-fapi-binance-com-fapi-v2-positionrisk-or-https-fapi-binance-com-fapi-v2-account-using-the-authenticatedfetch-utility-from-binanceauth-ts-filter-results-to-include-only-positions-where-positionamt-is-non-zero-map-each-binance-position-response-to-the-app-s-internal-position-type-symbol-positiontype-as-long-short-based-on-positionamt-sign-entryprice-leverage-investment-derived-from-positionamt-entryprice-leverage-if-credentials-are-missing-or-the-api-call-fails-throw-a-descriptive-typed-error",
+      "title": "Create a frontend service function in frontend/src/services/binanceOrderService.ts (or a dedicated frontend/src/services/binancePositionService.ts) that fetches the user's currently open positions from the Binance USD-M Futures account endpoint (https://fapi.binance.com/fapi/v2/positionRisk or https://fapi.binance.com/fapi/v2/account) using the authenticatedFetch utility from binanceAuth.ts. Filter results to include only positions where positionAmt is non-zero. Map each Binance position response to the app's internal Position type (symbol, positionType as Long/Short based on positionAmt sign, entryPrice, leverage, investment derived from positionAmt × entryPrice / leverage). If credentials are missing or the API call fails, throw a descriptive typed error.",
+      "reqIds": [
+        "REQ-68"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-import-from-binance-button-to-the-dashboard-tab-dashboardtab-tsx-visible-only-when-binance-credentials-are-configured-use-hascredentials-from-binanceauth-ts-when-clicked-the-button-calls-the-binance-open-positions-service-function-from-req-68-then-merges-the-returned-positions-into-the-existing-positions-list-managed-by-usepositionstorage-skipping-any-position-whose-symbol-is-already-tracked-to-avoid-duplicates-display-a-loading-spinner-on-the-button-while-the-fetch-is-in-progress-on-success-show-a-toast-notification-indicating-how-many-positions-were-imported-e-g-imported-3-positions-from-binance-on-failure-show-a-toast-with-the-error-message",
+      "title": "Add an 'Import from Binance' button to the Dashboard tab (DashboardTab.tsx), visible only when Binance credentials are configured (use hasCredentials from binanceAuth.ts). When clicked, the button calls the Binance open positions service function from REQ-68, then merges the returned positions into the existing positions list managed by usePositionStorage — skipping any position whose symbol is already tracked to avoid duplicates. Display a loading spinner on the button while the fetch is in progress. On success, show a toast notification indicating how many positions were imported (e.g., 'Imported 3 positions from Binance'). On failure, show a toast with the error message.",
+      "reqIds": [
+        "REQ-69"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-import-from-binance-button-visibility-logic-in-dashboardtab-tsx-so-that-the-button-reliably-appears-whenever-binance-credentials-are-present-in-localstorage-i-e-hascredentials-from-binanceauth-ts-returns-true-the-current-implementation-fails-to-show-the-button-even-when-credentials-are-correctly-saved-and-the-connection-test-passes-audit-the-following-1-ensure-the-component-re-evaluates-hascredentials-reactively-not-just-on-initial-mount-by-listening-for-the-custom-credential-change-dom-event-dispatched-by-livetradingstorage-ts-or-binanceauth-ts-when-credentials-are-saved-2-ensure-the-conditional-rendering-check-is-not-blocked-by-any-additional-state-flag-e-g-live-trading-mode-connection-test-result-beyond-the-presence-of-credentials-3-verify-the-component-re-renders-after-credentials-are-saved-from-the-settingsdialog-without-requiring-a-full-page-reload-the-button-must-become-visible-immediately-after-the-user-saves-valid-credentials-in-the-settings-panel-without-requiring-a-page-refresh",
+      "title": "Fix the 'Import from Binance' button visibility logic in DashboardTab.tsx so that the button reliably appears whenever Binance credentials are present in localStorage (i.e., hasCredentials() from binanceAuth.ts returns true). The current implementation fails to show the button even when credentials are correctly saved and the connection test passes. Audit the following: (1) ensure the component re-evaluates hasCredentials() reactively — not just on initial mount — by listening for the custom credential-change DOM event (dispatched by liveTradingStorage.ts or binanceAuth.ts when credentials are saved); (2) ensure the conditional rendering check is not blocked by any additional state flag (e.g., live trading mode, connection test result) beyond the presence of credentials; (3) verify the component re-renders after credentials are saved from the SettingsDialog without requiring a full page reload. The button must become visible immediately after the user saves valid credentials in the Settings panel, without requiring a page refresh.",
+      "reqIds": [
+        "REQ-70"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-uselivetradingmode-ts-increase-the-credential-validation-timeout-when-enabling-live-trading-mode-the-current-validation-call-to-the-binance-futures-account-endpoint-https-fapi-binance-com-fapi-v2-account-must-use-an-abortcontroller-with-a-timeout-of-at-least-15-seconds-up-from-any-shorter-default-if-the-validation-request-does-not-complete-within-the-timeout-treat-it-as-a-non-blocking-warning-log-the-timeout-show-a-toast-credential-check-timed-out-live-trading-enabled-without-verification-and-still-allow-the-toggle-to-activate-do-not-block-or-reject-the-live-trading-activation-solely-due-to-a-slow-or-non-responsive-network-request",
+      "title": "In useLiveTradingMode.ts, increase the credential validation timeout when enabling Live Trading mode. The current validation call to the Binance Futures account endpoint (https://fapi.binance.com/fapi/v2/account) must use an AbortController with a timeout of at least 15 seconds (up from any shorter default). If the validation request does not complete within the timeout, treat it as a non-blocking warning (log the timeout, show a toast 'Credential check timed out — Live Trading enabled without verification') and still allow the toggle to activate. Do not block or reject the Live Trading activation solely due to a slow or non-responsive network request.",
+      "reqIds": [
+        "REQ-71"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-binancecredentialspanel-tsx-increase-the-timeout-for-the-test-connection-button-s-fetch-call-to-the-binance-futures-account-endpoint-https-fapi-binance-com-fapi-v2-account-to-at-least-15-seconds-using-abortcontroller-if-the-request-exceeds-the-timeout-display-a-clear-status-message-connection-test-timed-out-server-did-not-respond-in-time-your-credentials-may-still-be-valid-do-not-leave-the-ui-in-a-loading-frozen-state-after-a-timeout",
+      "title": "In BinanceCredentialsPanel.tsx, increase the timeout for the 'Test Connection' button's fetch call to the Binance Futures account endpoint (https://fapi.binance.com/fapi/v2/account) to at least 15 seconds using AbortController. If the request exceeds the timeout, display a clear status message: 'Connection test timed out — server did not respond in time. Your credentials may still be valid.' Do not leave the UI in a loading/frozen state after a timeout.",
+      "reqIds": [
+        "REQ-72"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-binanceauth-ts-add-a-default-request-timeout-of-15-seconds-to-the-authenticatedfetch-helper-using-abortcontroller-if-the-caller-provides-its-own-signal-merge-both-signals-so-that-either-the-caller-s-abort-or-the-15-second-timeout-will-cancel-the-request-on-timeout-throw-a-typed-binanceapierror-with-code-request-timeout-and-a-descriptive-message-this-ensures-all-authenticated-binance-api-calls-across-the-app-order-placement-position-import-credential-test-time-out-cleanly-instead-of-hanging-indefinitely",
+      "title": "In binanceAuth.ts, add a default request timeout of 15 seconds to the authenticatedFetch helper using AbortController. If the caller provides its own signal, merge both signals so that either the caller's abort or the 15-second timeout will cancel the request. On timeout, throw a typed BinanceApiError with code 'REQUEST_TIMEOUT' and a descriptive message. This ensures all authenticated Binance API calls across the app (order placement, position import, credential test) time out cleanly instead of hanging indefinitely.",
+      "reqIds": [
+        "REQ-73"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-livetradingtoggle-tsx-wrap-the-entire-toggle-activation-flow-confirmation-dialog-credential-validation-localstorage-write-state-update-in-a-try-catch-finally-block-ensure-the-component-never-remains-in-a-permanent-loading-or-disabled-state-after-any-error-or-timeout-if-any-step-in-the-activation-flow-throws-or-times-out-reset-the-toggle-ui-to-its-previous-state-off-and-display-a-toast-with-the-specific-error-message-add-a-maximum-total-activation-timeout-of-20-seconds-if-the-entire-activation-flow-does-not-complete-within-20-seconds-automatically-reset-the-toggle-to-off-and-show-live-trading-activation-timed-out-please-try-again",
+      "title": "In LiveTradingToggle.tsx, wrap the entire toggle activation flow (confirmation dialog → credential validation → localStorage write → state update) in a try/catch/finally block. Ensure the component never remains in a permanent loading or disabled state after any error or timeout. If any step in the activation flow throws or times out, reset the toggle UI to its previous state (OFF) and display a toast with the specific error message. Add a maximum total activation timeout of 20 seconds: if the entire activation flow does not complete within 20 seconds, automatically reset the toggle to OFF and show 'Live Trading activation timed out — please try again'.",
+      "reqIds": [
+        "REQ-74"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-usepositionstorage-ts-and-useaitradegeneration-ts-wrap-all-calls-to-binanceorderservice-functions-placemarketorder-placetakeprofitmarketorder-placestopmarketorder-in-individual-try-catch-blocks-with-a-per-call-timeout-of-10-seconds-enforced-via-abortcontroller-passed-as-a-signal-option-if-supported-or-via-a-promise-race-with-a-timeout-promise-if-any-single-order-call-times-out-or-fails-log-the-error-to-console-show-a-toast-notification-e-g-entry-order-timed-out-position-saved-locally-only-and-continue-execution-without-blocking-position-creation-or-ai-trade-activation-the-position-or-ai-trade-must-be-saved-to-localstorage-regardless-of-whether-the-binance-order-calls-succeed",
+      "title": "In usePositionStorage.ts and useAITradeGeneration.ts, wrap all calls to binanceOrderService functions (placeMarketOrder, placeTakeProfitMarketOrder, placeStopMarketOrder) in individual try/catch blocks with a per-call timeout of 10 seconds enforced via AbortController (passed as a signal option if supported, or via a Promise.race with a timeout promise). If any single order call times out or fails, log the error to console, show a toast notification (e.g., 'Entry order timed out — position saved locally only'), and continue execution without blocking position creation or AI trade activation. The position or AI trade must be saved to localStorage regardless of whether the Binance order calls succeed.",
+      "reqIds": [
+        "REQ-75"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-the-settingsdialog-open-close-state-management-in-app-tsx-to-use-a-simple-local-usestate-hook-e-g-const-settingsopen-setsettingsopen-react-usestate-false-wire-the-gear-icon-button-s-onclick-directly-to-setsettingsopen-true-with-no-intermediate-handlers-wrappers-or-conditions-ensure-the-settingsdialog-receives-open-settingsopen-and-onopenchange-setsettingsopen-remove-any-z-index-pointer-events-or-overflow-css-that-could-intercept-clicks-on-the-gear-button-verify-the-dialog-renders-and-is-dismissible-in-all-four-tabs",
+      "title": "Rewrite the SettingsDialog open/close state management in App.tsx to use a simple local useState hook (e.g., `const [settingsOpen, setSettingsOpen] = React.useState(false)`). Wire the gear icon button's onClick directly to `() => setSettingsOpen(true)` with no intermediate handlers, wrappers, or conditions. Ensure the SettingsDialog receives `open={settingsOpen}` and `onOpenChange={setSettingsOpen}`. Remove any z-index, pointer-events, or overflow CSS that could intercept clicks on the gear button. Verify the dialog renders and is dismissible in all four tabs.",
+      "reqIds": [
+        "REQ-76"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-completely-refactor-the-live-trading-activation-flow-in-livetradingtoggle-tsx-and-uselivetradingmode-ts-to-be-fully-non-blocking-1-remove-any-synchronous-credential-validation-that-runs-on-the-react-render-thread-2-move-credential-validation-into-an-async-function-guarded-by-a-15-second-abortcontroller-timeout-3-wrap-the-entire-activation-sequence-confirmation-validation-localstorage-write-state-update-in-a-single-try-catch-finally-with-a-20-second-outer-race-timeout-using-promise-race-4-in-the-finally-block-always-clear-the-loading-pending-state-so-the-toggle-never-stays-stuck-5-if-validation-times-out-still-activate-live-trading-and-show-a-toast-credential-check-timed-out-live-trading-enabled-without-verification-6-if-any-step-throws-reset-the-toggle-to-off-and-display-the-specific-error-in-a-toast-7-ensure-the-confirmation-dialog-does-not-block-the-react-event-loop-use-state-driven-rendering-not-window-confirm",
+      "title": "Completely refactor the Live Trading activation flow in LiveTradingToggle.tsx and useLiveTradingMode.ts to be fully non-blocking: (1) Remove any synchronous credential validation that runs on the React render thread. (2) Move credential validation into an async function guarded by a 15-second AbortController timeout. (3) Wrap the entire activation sequence (confirmation → validation → localStorage write → state update) in a single try/catch/finally with a 20-second outer race timeout using `Promise.race`. (4) In the `finally` block, always clear the loading/pending state so the toggle never stays stuck. (5) If validation times out, still activate Live Trading and show a toast: 'Credential check timed out — Live Trading enabled without verification'. (6) If any step throws, reset the toggle to OFF and display the specific error in a toast. (7) Ensure the confirmation dialog does not block the React event loop — use state-driven rendering, not `window.confirm`.",
+      "reqIds": [
+        "REQ-77"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-and-fix-all-useeffect-hooks-and-window-event-listeners-in-uselivetradingmode-ts-usepositionstorage-ts-and-useaitradegeneration-ts-that-respond-to-the-live-trading-enabled-localstorage-key-or-any-custom-dom-events-related-to-live-trading-1-ensure-each-event-listener-is-registered-exactly-once-using-an-empty-or-stable-dependency-array-2-every-addeventlistener-call-must-have-a-corresponding-removeeventlistener-in-the-useeffect-cleanup-function-3-remove-any-state-setters-or-refs-from-useeffect-dependency-arrays-that-would-cause-the-effect-to-re-register-on-every-render-4-confirm-that-toggling-live-trading-on-or-off-does-not-trigger-cascading-re-renders-or-re-mounts-of-unrelated-components",
+      "title": "Audit and fix all useEffect hooks and window event listeners in useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts that respond to the 'live_trading_enabled' localStorage key or any custom DOM events related to live trading. (1) Ensure each event listener is registered exactly once using an empty or stable dependency array. (2) Every addEventListener call must have a corresponding removeEventListener in the useEffect cleanup function. (3) Remove any state setters or refs from useEffect dependency arrays that would cause the effect to re-register on every render. (4) Confirm that toggling Live Trading on or off does not trigger cascading re-renders or re-mounts of unrelated components.",
+      "reqIds": [
+        "REQ-78"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-order-execution-flow-in-usepositionstorage-ts-and-useaitradegeneration-ts-so-that-real-binance-orders-are-sent-when-live-trading-mode-is-active-1-each-call-to-placemarketorder-placetakeprofitmarketorder-and-placestopmarketorder-must-be-individually-wrapped-in-its-own-try-catch-block-2-enforce-a-10-second-per-call-timeout-using-promise-race-with-a-timeout-promise-3-on-timeout-or-error-log-to-console-and-show-a-specific-toast-e-g-entry-order-timed-out-position-saved-locally-only-then-continue-execution-4-position-creation-and-ai-trade-activation-must-complete-and-persist-to-localstorage-regardless-of-whether-any-individual-binance-order-call-fails-5-on-success-show-a-toast-confirming-the-order-was-placed-e-g-entry-order-placed-on-binance",
+      "title": "Fix the order execution flow in usePositionStorage.ts and useAITradeGeneration.ts so that real Binance orders are sent when Live Trading mode is active. (1) Each call to placeMarketOrder, placeTakeProfitMarketOrder, and placeStopMarketOrder must be individually wrapped in its own try/catch block. (2) Enforce a 10-second per-call timeout using Promise.race with a timeout promise. (3) On timeout or error, log to console and show a specific toast (e.g., 'Entry order timed out — position saved locally only') then continue execution. (4) Position creation and AI trade activation must complete and persist to localStorage regardless of whether any individual Binance order call fails. (5) On success, show a toast confirming the order was placed (e.g., 'Entry order placed on Binance').",
+      "reqIds": [
+        "REQ-79"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-authenticatedfetch-helper-in-frontend-src-utils-binanceauth-ts-to-reliably-apply-the-15-second-timeout-1-create-an-internal-abortcontroller-with-a-15-second-timeout-using-settimeout-2-if-the-caller-passes-an-external-signal-combine-both-using-a-new-abortcontroller-that-aborts-when-either-the-caller-s-signal-fires-or-the-15-second-timer-fires-3-always-clear-the-internal-timeout-in-a-finally-block-after-the-fetch-resolves-or-rejects-4-on-timeout-throw-a-binanceapierror-with-code-request-timeout-and-message-request-timed-out-after-15-seconds-5-ensure-this-timeout-applies-uniformly-to-all-callers-binancecredentialspanel-test-button-uselivetradingmode-validation-binanceorderservice-order-placement-and-binancepositionservice-position-import",
+      "title": "Fix the authenticatedFetch helper in frontend/src/utils/binanceAuth.ts to reliably apply the 15-second timeout. (1) Create an internal AbortController with a 15-second timeout using setTimeout. (2) If the caller passes an external signal, combine both using a new AbortController that aborts when either the caller's signal fires or the 15-second timer fires. (3) Always clear the internal timeout in a finally block after the fetch resolves or rejects. (4) On timeout, throw a BinanceApiError with code 'REQUEST_TIMEOUT' and message 'Request timed out after 15 seconds'. (5) Ensure this timeout applies uniformly to all callers: BinanceCredentialsPanel test button, useLiveTradingMode validation, binanceOrderService order placement, and binancePositionService position import.",
+      "reqIds": [
+        "REQ-80"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-import-from-binance-button-visibility-in-dashboardtab-tsx-so-it-reactively-appears-as-soon-as-credentials-are-saved-1-replace-the-static-initial-evaluation-of-hascredentials-with-a-usestate-that-is-updated-by-listening-to-the-credential-change-custom-dom-event-dispatched-by-livetradingstorage-ts-or-binanceauth-ts-2-register-the-event-listener-once-in-a-useeffect-with-an-empty-dependency-array-and-remove-it-on-cleanup-3-the-button-must-be-visible-solely-based-on-hascredentials-returning-true-remove-any-additional-guards-such-as-live-trading-mode-or-connection-test-status-from-the-visibility-condition-4-dispatch-the-credential-change-event-from-binancecredentialspanel-tsx-immediately-after-saving-credentials-to-localstorage-so-dashboardtab-tsx-re-evaluates-without-a-page-reload",
+      "title": "Fix the 'Import from Binance' button visibility in DashboardTab.tsx so it reactively appears as soon as credentials are saved. (1) Replace the static initial evaluation of hasCredentials() with a useState that is updated by listening to the 'credential-change' custom DOM event dispatched by liveTradingStorage.ts or binanceAuth.ts. (2) Register the event listener once in a useEffect with an empty dependency array, and remove it on cleanup. (3) The button must be visible solely based on hasCredentials() returning true — remove any additional guards such as live trading mode or connection test status from the visibility condition. (4) Dispatch the 'credential-change' event from BinanceCredentialsPanel.tsx immediately after saving credentials to localStorage so DashboardTab.tsx re-evaluates without a page reload.",
+      "reqIds": [
+        "REQ-81"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-test-connection-button-in-binancecredentialspanel-tsx-to-never-leave-the-ui-in-a-frozen-or-perpetual-loading-state-1-wrap-the-fetch-in-a-try-catch-finally-block-where-the-finally-block-always-resets-the-loading-state-2-apply-a-15-second-abortcontroller-timeout-to-the-fetch-call-3-if-the-timeout-fires-display-the-status-message-connection-test-timed-out-server-did-not-respond-in-time-your-credentials-may-still-be-valid-and-clear-the-loading-state-4-ensure-the-button-is-re-enabled-after-timeout-error-or-success-so-the-user-can-retry",
+      "title": "Fix the 'Test Connection' button in BinanceCredentialsPanel.tsx to never leave the UI in a frozen or perpetual loading state. (1) Wrap the fetch in a try/catch/finally block where the finally block always resets the loading state. (2) Apply a 15-second AbortController timeout to the fetch call. (3) If the timeout fires, display the status message: 'Connection test timed out — server did not respond in time. Your credentials may still be valid.' and clear the loading state. (4) Ensure the button is re-enabled after timeout, error, or success so the user can retry.",
+      "reqIds": [
+        "REQ-82"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-credentialstatusindicator-component-in-the-app-header-stays-in-sync-with-credential-state-changes-without-requiring-a-page-reload-1-subscribe-to-the-credential-change-custom-dom-event-in-a-useeffect-with-an-empty-dependency-array-2-on-each-event-re-evaluate-hascredentials-and-islivetradingenabled-and-update-local-state-3-also-subscribe-to-the-live-trading-change-event-to-update-the-live-trading-indicator-4-clean-up-all-event-listeners-on-unmount-5-the-indicator-must-update-within-the-same-render-cycle-as-the-credential-save-or-live-trading-toggle",
+      "title": "Ensure the CredentialStatusIndicator component in the app header stays in sync with credential state changes without requiring a page reload. (1) Subscribe to the 'credential-change' custom DOM event in a useEffect with an empty dependency array. (2) On each event, re-evaluate hasCredentials() and isLiveTradingEnabled() and update local state. (3) Also subscribe to the 'live-trading-change' event to update the live trading indicator. (4) Clean up all event listeners on unmount. (5) The indicator must update within the same render cycle as the credential save or live trading toggle.",
+      "reqIds": [
+        "REQ-83"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-perform-a-comprehensive-audit-of-all-components-and-hooks-that-use-localstorage-reads-at-the-module-or-component-initialization-level-outside-of-useeffect-or-event-handlers-and-replace-them-with-reactive-patterns-specifically-1-any-call-to-hascredentials-islivetradingenabled-or-gettotalcapital-that-runs-only-once-on-mount-must-be-moved-inside-a-usestate-initializer-combined-with-a-useeffect-that-subscribes-to-the-relevant-custom-dom-events-credential-change-live-trading-change-2-ensure-the-livetradingbanner-component-also-subscribes-reactively-to-the-live-trading-change-event-so-it-appears-disappears-without-a-reload-3-document-each-fixed-location-with-a-comment-indicating-the-event-it-listens-to",
+      "title": "Perform a comprehensive audit of all components and hooks that use localStorage reads at the module or component initialization level (outside of useEffect or event handlers) and replace them with reactive patterns. Specifically: (1) Any call to hasCredentials(), isLiveTradingEnabled(), or getTotalCapital() that runs only once on mount must be moved inside a useState initializer combined with a useEffect that subscribes to the relevant custom DOM events ('credential-change', 'live-trading-change'). (2) Ensure the LiveTradingBanner component also subscribes reactively to the 'live-trading-change' event so it appears/disappears without a reload. (3) Document each fixed location with a comment indicating the event it listens to.",
+      "reqIds": [
+        "REQ-84"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -687,6 +832,18 @@
     {
       "id": "AR-23",
       "summary": "Integrate Binance authenticated API for real order execution: allow users to input their API Key and Secret (stored in localStorage), implement HMAC-SHA256 signing, and send real orders to Binance Futures when TP/SL levels are hit",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-24",
+      "summary": "Remove the daily UTC reset for AI trades — trades are only generated on first load and regenerated automatically after TP/SL is hit, with no daily reset",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-25",
+      "summary": "Read and import open positions from Binance Futures account into the app dashboard using authenticated API calls",
       "reqIds": [],
       "status": "pending"
     }

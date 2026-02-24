@@ -2,14 +2,30 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-live-trading-mode-toggle-in-livetradingtoggle-tsx-and-uselivetradingmode-ts-so-that-enabling-it-does-not-cause-the-application-to-freeze-or-become-unresponsive-the-freeze-likely-originates-from-a-synchronous-blocking-operation-an-infinite-re-render-loop-triggered-by-state-changes-when-live-trading-is-activated-or-an-unhandled-promise-rejection-in-the-order-placement-flow-that-locks-the-ui-audit-the-toggle-activation-path-including-the-confirmation-dialog-credential-validation-localstorage-write-and-any-reactive-effects-that-fire-on-live-trading-state-change-and-ensure-all-async-operations-are-non-blocking-with-proper-error-boundaries",
-      "featureTitle": "Fix the Live Trading mode toggle in LiveTradingToggle.tsx and useLiveTradingMode.ts so that enabling it does not cause the application to freeze or become unresponsive. The freeze likely originates from a synchronous blocking operation, an infinite re-render loop triggered by state changes when live trading is activated, or an unhandled promise rejection in the order placement flow that locks the UI. Audit the toggle activation path — including the confirmation dialog, credential validation, localStorage write, and any reactive effects that fire on live trading state change — and ensure all async operations are non-blocking with proper error boundaries.",
+      "featureId": "feature-rewrite-the-settingsdialog-open-close-state-management-in-app-tsx-to-use-a-simple-local-usestate-hook-e-g-const-settingsopen-setsettingsopen-react-usestate-false-wire-the-gear-icon-button-s-onclick-directly-to-setsettingsopen-true-with-no-intermediate-handlers-wrappers-or-conditions-ensure-the-settingsdialog-receives-open-settingsopen-and-onopenchange-setsettingsopen-remove-any-z-index-pointer-events-or-overflow-css-that-could-intercept-clicks-on-the-gear-button-verify-the-dialog-renders-and-is-dismissible-in-all-four-tabs",
+      "featureTitle": "Rewrite the SettingsDialog open/close state management in App.tsx to use a simple local useState hook (e.g., `const [settingsOpen, setSettingsOpen] = React.useState(false)`). Wire the gear icon button's onClick directly to `() => setSettingsOpen(true)` with no intermediate handlers, wrappers, or conditions. Ensure the SettingsDialog receives `open={settingsOpen}` and `onOpenChange={setSettingsOpen}`. Remove any z-index, pointer-events, or overflow CSS that could intercept clicks on the gear button. Verify the dialog renders and is dismissible in all four tabs.",
       "files": [
-        "frontend/src/components/LiveTradingBanner.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/components/SettingsDialog.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-76"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-completely-refactor-the-live-trading-activation-flow-in-livetradingtoggle-tsx-and-uselivetradingmode-ts-to-be-fully-non-blocking-1-remove-any-synchronous-credential-validation-that-runs-on-the-react-render-thread-2-move-credential-validation-into-an-async-function-guarded-by-a-15-second-abortcontroller-timeout-3-wrap-the-entire-activation-sequence-confirmation-validation-localstorage-write-state-update-in-a-single-try-catch-finally-with-a-20-second-outer-race-timeout-using-promise-race-4-in-the-finally-block-always-clear-the-loading-pending-state-so-the-toggle-never-stays-stuck-5-if-validation-times-out-still-activate-live-trading-and-show-a-toast-credential-check-timed-out-live-trading-enabled-without-verification-6-if-any-step-throws-reset-the-toggle-to-off-and-display-the-specific-error-in-a-toast-7-ensure-the-confirmation-dialog-does-not-block-the-react-event-loop-use-state-driven-rendering-not-window-confirm",
+      "featureTitle": "Completely refactor the Live Trading activation flow in LiveTradingToggle.tsx and useLiveTradingMode.ts to be fully non-blocking: (1) Remove any synchronous credential validation that runs on the React render thread. (2) Move credential validation into an async function guarded by a 15-second AbortController timeout. (3) Wrap the entire activation sequence (confirmation → validation → localStorage write → state update) in a single try/catch/finally with a 20-second outer race timeout using `Promise.race`. (4) In the `finally` block, always clear the loading/pending state so the toggle never stays stuck. (5) If validation times out, still activate Live Trading and show a toast: 'Credential check timed out — Live Trading enabled without verification'. (6) If any step throws, reset the toggle to OFF and display the specific error in a toast. (7) Ensure the confirmation dialog does not block the React event loop — use state-driven rendering, not `window.confirm`.",
+      "files": [
         "frontend/src/components/LiveTradingToggle.tsx",
-        "frontend/src/components/SettingsDialog.tsx",
-        "frontend/src/hooks/useLiveTradingMode.ts",
-        "frontend/src/utils/liveTradingStorage.ts"
+        "frontend/src/hooks/useLiveTradingMode.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -19,39 +35,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-64"
+        "REQ-77"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-the-order-execution-flow-in-usepositionstorage-ts-useaitradegeneration-ts-and-binanceorderservice-ts-so-that-when-live-trading-mode-is-on-and-valid-binance-credentials-are-present-real-orders-are-actually-sent-to-binance-futures-https-fapi-binance-com-fapi-v1-order-ensure-all-order-calls-market-entry-take-profit-market-stop-market-are-properly-awaited-errors-are-caught-per-order-without-aborting-the-entire-flow-and-the-result-success-or-failure-is-surfaced-to-the-user-via-a-toast-notification-if-an-order-fails-log-the-error-and-continue-do-not-let-a-single-order-failure-block-position-creation-or-ai-trade-activation",
-      "featureTitle": "Fix the order execution flow in usePositionStorage.ts, useAITradeGeneration.ts, and binanceOrderService.ts so that when Live Trading mode is ON and valid Binance credentials are present, real orders are actually sent to Binance Futures (https://fapi.binance.com/fapi/v1/order). Ensure all order calls (market entry, TAKE_PROFIT_MARKET, STOP_MARKET) are properly awaited, errors are caught per-order without aborting the entire flow, and the result (success or failure) is surfaced to the user via a toast notification. If an order fails, log the error and continue — do not let a single order failure block position creation or AI trade activation.",
+      "featureId": "feature-audit-and-fix-all-useeffect-hooks-and-window-event-listeners-in-uselivetradingmode-ts-usepositionstorage-ts-and-useaitradegeneration-ts-that-respond-to-the-live-trading-enabled-localstorage-key-or-any-custom-dom-events-related-to-live-trading-1-ensure-each-event-listener-is-registered-exactly-once-using-an-empty-or-stable-dependency-array-2-every-addeventlistener-call-must-have-a-corresponding-removeeventlistener-in-the-useeffect-cleanup-function-3-remove-any-state-setters-or-refs-from-useeffect-dependency-arrays-that-would-cause-the-effect-to-re-register-on-every-render-4-confirm-that-toggling-live-trading-on-or-off-does-not-trigger-cascading-re-renders-or-re-mounts-of-unrelated-components",
+      "featureTitle": "Audit and fix all useEffect hooks and window event listeners in useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts that respond to the 'live_trading_enabled' localStorage key or any custom DOM events related to live trading. (1) Ensure each event listener is registered exactly once using an empty or stable dependency array. (2) Every addEventListener call must have a corresponding removeEventListener in the useEffect cleanup function. (3) Remove any state setters or refs from useEffect dependency arrays that would cause the effect to re-register on every render. (4) Confirm that toggling Live Trading on or off does not trigger cascading re-renders or re-mounts of unrelated components.",
       "files": [
         "frontend/src/hooks/useAITradeGeneration.ts",
-        "frontend/src/hooks/useAITradeMonitoring.ts",
-        "frontend/src/hooks/usePositionStorage.ts",
-        "frontend/src/services/binanceOrderService.ts"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-65"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-audit-all-useeffect-and-react-query-hooks-that-listen-to-the-live-trading-mode-state-live-trading-enabled-in-localstorage-including-uselivetradingmode-ts-usepositionstorage-ts-and-useaitradegeneration-ts-and-remove-or-fix-any-dependency-array-entries-or-event-listener-registrations-that-could-cause-infinite-loops-or-cascading-re-renders-when-live-trading-is-toggled-ensure-custom-window-event-listeners-for-live-trading-state-changes-are-registered-once-and-properly-cleaned-up-on-unmount",
-      "featureTitle": "Audit all useEffect and React Query hooks that listen to the live trading mode state (live_trading_enabled in localStorage) — including useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts — and remove or fix any dependency array entries or event listener registrations that could cause infinite loops or cascading re-renders when live trading is toggled. Ensure custom window event listeners for live trading state changes are registered once and properly cleaned up on unmount.",
-      "files": [
-        "frontend/src/components/CredentialStatusIndicator.tsx",
-        "frontend/src/components/LiveTradingBanner.tsx",
-        "frontend/src/hooks/useAITradeGeneration.ts",
-        "frontend/src/hooks/useAITradeMonitoring.ts",
         "frontend/src/hooks/useLiveTradingMode.ts",
         "frontend/src/hooks/usePositionStorage.ts"
       ],
@@ -63,7 +55,121 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-66"
+        "REQ-78"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-order-execution-flow-in-usepositionstorage-ts-and-useaitradegeneration-ts-so-that-real-binance-orders-are-sent-when-live-trading-mode-is-active-1-each-call-to-placemarketorder-placetakeprofitmarketorder-and-placestopmarketorder-must-be-individually-wrapped-in-its-own-try-catch-block-2-enforce-a-10-second-per-call-timeout-using-promise-race-with-a-timeout-promise-3-on-timeout-or-error-log-to-console-and-show-a-specific-toast-e-g-entry-order-timed-out-position-saved-locally-only-then-continue-execution-4-position-creation-and-ai-trade-activation-must-complete-and-persist-to-localstorage-regardless-of-whether-any-individual-binance-order-call-fails-5-on-success-show-a-toast-confirming-the-order-was-placed-e-g-entry-order-placed-on-binance",
+      "featureTitle": "Fix the order execution flow in usePositionStorage.ts and useAITradeGeneration.ts so that real Binance orders are sent when Live Trading mode is active. (1) Each call to placeMarketOrder, placeTakeProfitMarketOrder, and placeStopMarketOrder must be individually wrapped in its own try/catch block. (2) Enforce a 10-second per-call timeout using Promise.race with a timeout promise. (3) On timeout or error, log to console and show a specific toast (e.g., 'Entry order timed out — position saved locally only') then continue execution. (4) Position creation and AI trade activation must complete and persist to localStorage regardless of whether any individual Binance order call fails. (5) On success, show a toast confirming the order was placed (e.g., 'Entry order placed on Binance').",
+      "files": [
+        "frontend/src/hooks/useAITradeGeneration.ts",
+        "frontend/src/hooks/usePositionStorage.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-79"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-authenticatedfetch-helper-in-frontend-src-utils-binanceauth-ts-to-reliably-apply-the-15-second-timeout-1-create-an-internal-abortcontroller-with-a-15-second-timeout-using-settimeout-2-if-the-caller-passes-an-external-signal-combine-both-using-a-new-abortcontroller-that-aborts-when-either-the-caller-s-signal-fires-or-the-15-second-timer-fires-3-always-clear-the-internal-timeout-in-a-finally-block-after-the-fetch-resolves-or-rejects-4-on-timeout-throw-a-binanceapierror-with-code-request-timeout-and-message-request-timed-out-after-15-seconds-5-ensure-this-timeout-applies-uniformly-to-all-callers-binancecredentialspanel-test-button-uselivetradingmode-validation-binanceorderservice-order-placement-and-binancepositionservice-position-import",
+      "featureTitle": "Fix the authenticatedFetch helper in frontend/src/utils/binanceAuth.ts to reliably apply the 15-second timeout. (1) Create an internal AbortController with a 15-second timeout using setTimeout. (2) If the caller passes an external signal, combine both using a new AbortController that aborts when either the caller's signal fires or the 15-second timer fires. (3) Always clear the internal timeout in a finally block after the fetch resolves or rejects. (4) On timeout, throw a BinanceApiError with code 'REQUEST_TIMEOUT' and message 'Request timed out after 15 seconds'. (5) Ensure this timeout applies uniformly to all callers: BinanceCredentialsPanel test button, useLiveTradingMode validation, binanceOrderService order placement, and binancePositionService position import.",
+      "files": [
+        "frontend/src/utils/binanceAuth.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-80"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-import-from-binance-button-visibility-in-dashboardtab-tsx-so-it-reactively-appears-as-soon-as-credentials-are-saved-1-replace-the-static-initial-evaluation-of-hascredentials-with-a-usestate-that-is-updated-by-listening-to-the-credential-change-custom-dom-event-dispatched-by-livetradingstorage-ts-or-binanceauth-ts-2-register-the-event-listener-once-in-a-useeffect-with-an-empty-dependency-array-and-remove-it-on-cleanup-3-the-button-must-be-visible-solely-based-on-hascredentials-returning-true-remove-any-additional-guards-such-as-live-trading-mode-or-connection-test-status-from-the-visibility-condition-4-dispatch-the-credential-change-event-from-binancecredentialspanel-tsx-immediately-after-saving-credentials-to-localstorage-so-dashboardtab-tsx-re-evaluates-without-a-page-reload",
+      "featureTitle": "Fix the 'Import from Binance' button visibility in DashboardTab.tsx so it reactively appears as soon as credentials are saved. (1) Replace the static initial evaluation of hasCredentials() with a useState that is updated by listening to the 'credential-change' custom DOM event dispatched by liveTradingStorage.ts or binanceAuth.ts. (2) Register the event listener once in a useEffect with an empty dependency array, and remove it on cleanup. (3) The button must be visible solely based on hasCredentials() returning true — remove any additional guards such as live trading mode or connection test status from the visibility condition. (4) Dispatch the 'credential-change' event from BinanceCredentialsPanel.tsx immediately after saving credentials to localStorage so DashboardTab.tsx re-evaluates without a page reload.",
+      "files": [
+        "frontend/src/components/BinanceCredentialsPanel.tsx",
+        "frontend/src/components/DashboardTab.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-81"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-test-connection-button-in-binancecredentialspanel-tsx-to-never-leave-the-ui-in-a-frozen-or-perpetual-loading-state-1-wrap-the-fetch-in-a-try-catch-finally-block-where-the-finally-block-always-resets-the-loading-state-2-apply-a-15-second-abortcontroller-timeout-to-the-fetch-call-3-if-the-timeout-fires-display-the-status-message-connection-test-timed-out-server-did-not-respond-in-time-your-credentials-may-still-be-valid-and-clear-the-loading-state-4-ensure-the-button-is-re-enabled-after-timeout-error-or-success-so-the-user-can-retry",
+      "featureTitle": "Fix the 'Test Connection' button in BinanceCredentialsPanel.tsx to never leave the UI in a frozen or perpetual loading state. (1) Wrap the fetch in a try/catch/finally block where the finally block always resets the loading state. (2) Apply a 15-second AbortController timeout to the fetch call. (3) If the timeout fires, display the status message: 'Connection test timed out — server did not respond in time. Your credentials may still be valid.' and clear the loading state. (4) Ensure the button is re-enabled after timeout, error, or success so the user can retry.",
+      "files": [
+        "frontend/src/components/BinanceCredentialsPanel.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-82"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-credentialstatusindicator-component-in-the-app-header-stays-in-sync-with-credential-state-changes-without-requiring-a-page-reload-1-subscribe-to-the-credential-change-custom-dom-event-in-a-useeffect-with-an-empty-dependency-array-2-on-each-event-re-evaluate-hascredentials-and-islivetradingenabled-and-update-local-state-3-also-subscribe-to-the-live-trading-change-event-to-update-the-live-trading-indicator-4-clean-up-all-event-listeners-on-unmount-5-the-indicator-must-update-within-the-same-render-cycle-as-the-credential-save-or-live-trading-toggle",
+      "featureTitle": "Ensure the CredentialStatusIndicator component in the app header stays in sync with credential state changes without requiring a page reload. (1) Subscribe to the 'credential-change' custom DOM event in a useEffect with an empty dependency array. (2) On each event, re-evaluate hasCredentials() and isLiveTradingEnabled() and update local state. (3) Also subscribe to the 'live-trading-change' event to update the live trading indicator. (4) Clean up all event listeners on unmount. (5) The indicator must update within the same render cycle as the credential save or live trading toggle.",
+      "files": [
+        "frontend/src/components/CredentialStatusIndicator.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-83"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-perform-a-comprehensive-audit-of-all-components-and-hooks-that-use-localstorage-reads-at-the-module-or-component-initialization-level-outside-of-useeffect-or-event-handlers-and-replace-them-with-reactive-patterns-specifically-1-any-call-to-hascredentials-islivetradingenabled-or-gettotalcapital-that-runs-only-once-on-mount-must-be-moved-inside-a-usestate-initializer-combined-with-a-useeffect-that-subscribes-to-the-relevant-custom-dom-events-credential-change-live-trading-change-2-ensure-the-livetradingbanner-component-also-subscribes-reactively-to-the-live-trading-change-event-so-it-appears-disappears-without-a-reload-3-document-each-fixed-location-with-a-comment-indicating-the-event-it-listens-to",
+      "featureTitle": "Perform a comprehensive audit of all components and hooks that use localStorage reads at the module or component initialization level (outside of useEffect or event handlers) and replace them with reactive patterns. Specifically: (1) Any call to hasCredentials(), isLiveTradingEnabled(), or getTotalCapital() that runs only once on mount must be moved inside a useState initializer combined with a useEffect that subscribes to the relevant custom DOM events ('credential-change', 'live-trading-change'). (2) Ensure the LiveTradingBanner component also subscribes reactively to the 'live-trading-change' event so it appears/disappears without a reload. (3) Document each fixed location with a comment indicating the event it listens to.",
+      "files": [
+        "frontend/src/components/LiveTradingBanner.tsx",
+        "frontend/src/components/PortfolioExposureDashboard.tsx",
+        "frontend/src/components/TotalCapitalSummary.tsx",
+        "frontend/src/utils/liveTradingStorage.ts",
+        "frontend/src/utils/totalCapitalStorage.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-84"
       ],
       "confidence": "high"
     }

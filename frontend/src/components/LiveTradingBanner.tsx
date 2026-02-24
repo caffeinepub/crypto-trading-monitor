@@ -1,37 +1,47 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef, memo } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { isLiveTradingEnabled } from '../utils/liveTradingStorage';
 
-export const LiveTradingBanner: React.FC = React.memo(() => {
+/**
+ * LiveTradingBanner — shows an amber warning strip when live trading is active.
+ * Listens to 'live-trading-change' and 'liveTradingChanged' custom DOM events
+ * to update reactively without page reload.
+ * Event listener is registered once on mount via useRef to prevent re-render loops.
+ */
+export const LiveTradingBanner = memo(function LiveTradingBanner() {
   const [isLive, setIsLive] = useState<boolean>(() => isLiveTradingEnabled());
-  // Use a ref for the handler so it never changes identity
-  const handlerRef = useRef<() => void>(() => {
-    setIsLive(isLiveTradingEnabled());
-  });
+
+  // Use a stable ref for the handler to avoid re-registering on every render
+  const handlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const handler = handlerRef.current;
-    window.addEventListener('liveTradingChanged', handler);
-    window.addEventListener('credentialsChanged', handler);
-    return () => {
-      window.removeEventListener('liveTradingChanged', handler);
-      window.removeEventListener('credentialsChanged', handler);
+    const handler = () => {
+      setIsLive(isLiveTradingEnabled());
     };
-  }, []); // register once, never re-register
+    handlerRef.current = handler;
+
+    // Listen to both event names for compatibility
+    window.addEventListener('live-trading-change', handler);
+    window.addEventListener('liveTradingChanged', handler);
+
+    return () => {
+      window.removeEventListener('live-trading-change', handler);
+      window.removeEventListener('liveTradingChanged', handler);
+    };
+  }, []); // Empty dependency array — register once only
 
   if (!isLive) return null;
 
   return (
-    <div className="w-full bg-amber-500/10 border-b border-amber-500/30 px-4 py-1.5 flex items-center justify-center gap-2">
-      <Zap className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-      <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 tracking-wide uppercase">
-        Live Trading Active — Real orders will be placed on Binance Futures
-      </span>
-      <Zap className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+    <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2">
+      <div className="max-w-7xl mx-auto flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+        <p className="text-xs text-amber-300 font-medium">
+          ⚡ LIVE TRADING ATIVO — Ordens reais estão sendo enviadas à Binance Futures
+        </p>
+      </div>
     </div>
   );
 });
-
-LiveTradingBanner.displayName = 'LiveTradingBanner';
 
 export default LiveTradingBanner;

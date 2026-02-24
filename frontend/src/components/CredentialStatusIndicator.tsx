@@ -1,50 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, XCircle, KeyRound } from 'lucide-react';
-import { hasValidCredentials, isLiveTradingEnabled } from '../utils/liveTradingStorage';
+import React, { useState, useEffect, useRef, memo } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Key, Zap } from 'lucide-react';
+import { hasCredentials, isLiveTradingEnabled } from '../utils/liveTradingStorage';
 
-interface CredentialStatusIndicatorProps {
-  onClick?: () => void;
-}
-
-export const CredentialStatusIndicator: React.FC<CredentialStatusIndicatorProps> = React.memo(({ onClick }) => {
-  const [credentialsValid, setCredentialsValid] = useState<boolean>(() => hasValidCredentials());
+/**
+ * CredentialStatusIndicator — shows API key validity and live mode badge.
+ * Listens to 'credential-change' and 'live-trading-change' custom DOM events
+ * to update reactively without page reload.
+ * Event listeners are registered once on mount via useRef to prevent duplicate registration.
+ */
+export const CredentialStatusIndicator = memo(function CredentialStatusIndicator() {
+  const [hasCreds, setHasCreds] = useState<boolean>(() => hasCredentials());
   const [isLive, setIsLive] = useState<boolean>(() => isLiveTradingEnabled());
 
-  // Stable handler ref — never changes identity, so the effect never re-runs
-  const refreshRef = useRef(() => {
-    setCredentialsValid(hasValidCredentials());
-    setIsLive(isLiveTradingEnabled());
-  });
+  // Use stable refs for handlers to avoid re-registering on every render
+  const credHandlerRef = useRef<(() => void) | null>(null);
+  const liveHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const handler = refreshRef.current;
-    window.addEventListener('credentialsChanged', handler);
-    window.addEventListener('liveTradingChanged', handler);
-    return () => {
-      window.removeEventListener('credentialsChanged', handler);
-      window.removeEventListener('liveTradingChanged', handler);
+    const credHandler = () => {
+      setHasCreds(hasCredentials());
     };
-  }, []); // register once, never re-register
+    const liveHandler = () => {
+      setIsLive(isLiveTradingEnabled());
+    };
+
+    credHandlerRef.current = credHandler;
+    liveHandlerRef.current = liveHandler;
+
+    // Listen to credential changes (both event names for compatibility)
+    window.addEventListener('credential-change', credHandler);
+    window.addEventListener('credentialsChanged', credHandler);
+
+    // Listen to live trading changes (both event names for compatibility)
+    window.addEventListener('live-trading-change', liveHandler);
+    window.addEventListener('liveTradingChanged', liveHandler);
+
+    return () => {
+      window.removeEventListener('credential-change', credHandler);
+      window.removeEventListener('credentialsChanged', credHandler);
+      window.removeEventListener('live-trading-change', liveHandler);
+      window.removeEventListener('liveTradingChanged', liveHandler);
+    };
+  }, []); // Empty dependency array — register once only
+
+  if (!hasCreds) return null;
 
   return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
-      title={credentialsValid ? 'Binance API credentials configured' : 'Configure Binance API credentials'}
-    >
-      <KeyRound className="h-4 w-4 text-muted-foreground" />
-      {credentialsValid ? (
-        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-      ) : (
-        <XCircle className="h-3.5 w-3.5 text-destructive" />
-      )}
+    <div className="flex items-center gap-1.5">
+      <Badge
+        variant="outline"
+        className="text-xs flex items-center gap-1 border-primary/30 text-primary/80 py-0.5"
+      >
+        <Key className="w-3 h-3" />
+        API
+      </Badge>
       {isLive && (
-        <span className="text-xs font-bold text-amber-500 uppercase tracking-wide">LIVE</span>
+        <Badge className="text-xs flex items-center gap-1 bg-amber-500/20 text-amber-400 border-amber-500/30 py-0.5">
+          <Zap className="w-3 h-3" />
+          LIVE
+        </Badge>
       )}
-    </button>
+    </div>
   );
 });
-
-CredentialStatusIndicator.displayName = 'CredentialStatusIndicator';
 
 export default CredentialStatusIndicator;

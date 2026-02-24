@@ -26,26 +26,23 @@ export function TotalCapitalInput({ onSave }: TotalCapitalInputProps) {
 
   const handleSave = () => {
     const numValue = parseFloat(value);
-    
+
     if (!validateTotalCapital(numValue)) {
       toast.error('Please enter a valid positive number');
       return;
     }
 
-    const success = setTotalCapital(numValue);
-    if (success) {
-      setInitialValue(numValue);
-      setShowSuccess(true);
-      toast.success('Total capital saved successfully');
-      
-      if (onSave) {
-        onSave(numValue);
-      }
+    // setTotalCapital now returns void — just call it
+    setTotalCapital(numValue);
+    setInitialValue(numValue);
+    setShowSuccess(true);
+    toast.success('Total capital saved successfully');
 
-      setTimeout(() => setShowSuccess(false), 2000);
-    } else {
-      toast.error('Failed to save total capital');
+    if (onSave) {
+      onSave(numValue);
     }
+
+    setTimeout(() => setShowSuccess(false), 2000);
   };
 
   const numValue = parseFloat(value);
@@ -95,3 +92,5 @@ export function TotalCapitalInput({ onSave }: TotalCapitalInputProps) {
     </Card>
   );
 }
+
+export default TotalCapitalInput;

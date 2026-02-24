@@ -4,59 +4,81 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { Settings } from 'lucide-react';
-import { LiveTradingToggle } from './LiveTradingToggle';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BinanceCredentialsPanel } from './BinanceCredentialsPanel';
+import LiveTradingToggle from './LiveTradingToggle';
+import { TotalCapitalInput } from './TotalCapitalInput';
+import { Settings, Key, Zap, DollarSign } from 'lucide-react';
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
+export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-lg w-full border-primary/20 bg-card max-h-[90vh] overflow-y-auto"
+        className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         style={{ zIndex: 9999 }}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <Settings className="w-5 h-5 text-primary" />
+          <DialogTitle className="flex items-center gap-2 text-primary">
+            <Settings className="w-5 h-5" />
             Configurações
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground text-sm">
-            Gerencie suas credenciais da Binance e o modo de trading.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 pt-2">
-          {/* API Credentials Section */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-              Credenciais da API Binance Futures
-            </h3>
+        <Tabs defaultValue="credentials" className="mt-2">
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="credentials" className="flex items-center gap-1.5 text-xs">
+              <Key className="w-3.5 h-3.5" />
+              API Binance
+            </TabsTrigger>
+            <TabsTrigger value="trading" className="flex items-center gap-1.5 text-xs">
+              <Zap className="w-3.5 h-3.5" />
+              Live Trading
+            </TabsTrigger>
+            <TabsTrigger value="capital" className="flex items-center gap-1.5 text-xs">
+              <DollarSign className="w-3.5 h-3.5" />
+              Capital
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="credentials" className="mt-4">
             <BinanceCredentialsPanel />
-          </div>
+          </TabsContent>
 
-          <Separator className="bg-border/60" />
+          <TabsContent value="trading" className="mt-4">
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h3 className="text-sm font-semibold text-foreground mb-1">
+                  Modo Live Trading
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Ative para enviar ordens reais à Binance Futures. Certifique-se de que suas credenciais API estão configuradas corretamente.
+                </p>
+                <LiveTradingToggle />
+              </div>
+            </div>
+          </TabsContent>
 
-          {/* Trading Mode Section */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-              Modo de Trading
-            </h3>
-            <LiveTradingToggle />
-          </div>
-        </div>
+          <TabsContent value="capital" className="mt-4">
+            <div className="p-4 rounded-lg border border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground mb-1">
+                Capital Total
+              </h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Defina seu capital total para cálculos de exposição e gerenciamento de risco.
+              </p>
+              <TotalCapitalInput />
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
-};
+}
 
 export default SettingsDialog;

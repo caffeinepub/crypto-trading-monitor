@@ -1,7 +1,7 @@
 import { PositionWithPrice } from '../types/position';
 import { PortfolioExposure } from '../types/exposure';
 import { PositionSizeCalculator } from './PositionSizeCalculator';
-import { PortfolioExposureDashboard } from './PortfolioExposureDashboard';
+import PortfolioExposureDashboard from './PortfolioExposureDashboard';
 import { ScenarioSimulator } from './ScenarioSimulator';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShieldCheck } from 'lucide-react';

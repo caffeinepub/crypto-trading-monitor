@@ -1,70 +1,132 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T16:38:25.250Z",
+  "generatedAt": "2026-02-24T19:39:53.451Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 9,
+    "implemented": 9,
     "items": [
       {
-        "id": "REQ-64",
-        "summary": "Fix the Live Trading mode toggle in LiveTradingToggle.tsx and useLiveTradingMode.ts so that enabling it does not cause the application to freeze or become unresponsive. The freeze likely originates from a synchronous blocking operation, an infinite re-render loop triggered by state changes when live trading is activated, or an unhandled promise rejection in the order placement flow that locks the UI. Audit the toggle activation path — including the confirmation dialog, credential validation, localStorage write, and any reactive effects that fire on live trading state change — and ensure all async operations are non-blocking with proper error boundaries.",
+        "id": "REQ-76",
+        "summary": "Rewrite the SettingsDialog open/close state management in App.tsx to use a simple local useState hook (e.g., `const [settingsOpen, setSettingsOpen] = React.useState(false)`). Wire the gear icon button's onClick directly to `() => setSettingsOpen(true)` with no intermediate handlers, wrappers, or conditions. Ensure the SettingsDialog receives `open={settingsOpen}` and `onOpenChange={setSettingsOpen}`. Remove any z-index, pointer-events, or overflow CSS that could intercept clicks on the gear button. Verify the dialog renders and is dismissible in all four tabs.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useLiveTradingMode.ts",
-          "frontend/src/components/LiveTradingToggle.tsx",
-          "frontend/src/components/LiveTradingBanner.tsx",
-          "frontend/src/utils/liveTradingStorage.ts",
+          "frontend/src/App.tsx",
           "frontend/src/components/SettingsDialog.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useLiveTradingMode.ts",
-          "frontend/src/components/LiveTradingToggle.tsx",
-          "frontend/src/components/LiveTradingBanner.tsx",
-          "frontend/src/utils/liveTradingStorage.ts",
+          "frontend/src/App.tsx",
           "frontend/src/components/SettingsDialog.tsx"
         ]
       },
       {
-        "id": "REQ-65",
-        "summary": "Fix the order execution flow in usePositionStorage.ts, useAITradeGeneration.ts, and binanceOrderService.ts so that when Live Trading mode is ON and valid Binance credentials are present, real orders are actually sent to Binance Futures (https://fapi.binance.com/fapi/v1/order). Ensure all order calls (market entry, TAKE_PROFIT_MARKET, STOP_MARKET) are properly awaited, errors are caught per-order without aborting the entire flow, and the result (success or failure) is surfaced to the user via a toast notification. If an order fails, log the error and continue — do not let a single order failure block position creation or AI trade activation.",
+        "id": "REQ-77",
+        "summary": "Completely refactor the Live Trading activation flow in LiveTradingToggle.tsx and useLiveTradingMode.ts to be fully non-blocking: (1) Remove any synchronous credential validation that runs on the React render thread. (2) Move credential validation into an async function guarded by a 15-second AbortController timeout. (3) Wrap the entire activation sequence (confirmation → validation → localStorage write → state update) in a single try/catch/finally with a 20-second outer race timeout using `Promise.race`. (4) In the `finally` block, always clear the loading/pending state so the toggle never stays stuck. (5) If validation times out, still activate Live Trading and show a toast: 'Credential check timed out — Live Trading enabled without verification'. (6) If any step throws, reset the toggle to OFF and display the specific error in a toast. (7) Ensure the confirmation dialog does not block the React event loop — use state-driven rendering, not `window.confirm`.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/usePositionStorage.ts",
-          "frontend/src/hooks/useAITradeGeneration.ts",
-          "frontend/src/services/binanceOrderService.ts",
-          "frontend/src/hooks/useAITradeMonitoring.ts"
+          "frontend/src/components/LiveTradingToggle.tsx",
+          "frontend/src/hooks/useLiveTradingMode.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/usePositionStorage.ts",
-          "frontend/src/hooks/useAITradeGeneration.ts",
-          "frontend/src/services/binanceOrderService.ts",
-          "frontend/src/hooks/useAITradeMonitoring.ts"
+          "frontend/src/components/LiveTradingToggle.tsx",
+          "frontend/src/hooks/useLiveTradingMode.ts"
         ]
       },
       {
-        "id": "REQ-66",
-        "summary": "Audit all useEffect and React Query hooks that listen to the live trading mode state (live_trading_enabled in localStorage) — including useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts — and remove or fix any dependency array entries or event listener registrations that could cause infinite loops or cascading re-renders when live trading is toggled. Ensure custom window event listeners for live trading state changes are registered once and properly cleaned up on unmount.",
+        "id": "REQ-78",
+        "summary": "Audit and fix all useEffect hooks and window event listeners in useLiveTradingMode.ts, usePositionStorage.ts, and useAITradeGeneration.ts that respond to the 'live_trading_enabled' localStorage key or any custom DOM events related to live trading. (1) Ensure each event listener is registered exactly once using an empty or stable dependency array. (2) Every addEventListener call must have a corresponding removeEventListener in the useEffect cleanup function. (3) Remove any state setters or refs from useEffect dependency arrays that would cause the effect to re-register on every render. (4) Confirm that toggling Live Trading on or off does not trigger cascading re-renders or re-mounts of unrelated components.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/hooks/useLiveTradingMode.ts",
           "frontend/src/hooks/usePositionStorage.ts",
-          "frontend/src/hooks/useAITradeGeneration.ts",
-          "frontend/src/hooks/useAITradeMonitoring.ts",
-          "frontend/src/components/LiveTradingBanner.tsx",
-          "frontend/src/components/CredentialStatusIndicator.tsx"
+          "frontend/src/hooks/useAITradeGeneration.ts"
         ],
         "matchedFiles": [
           "frontend/src/hooks/useLiveTradingMode.ts",
           "frontend/src/hooks/usePositionStorage.ts",
-          "frontend/src/hooks/useAITradeGeneration.ts",
-          "frontend/src/hooks/useAITradeMonitoring.ts",
-          "frontend/src/components/LiveTradingBanner.tsx",
+          "frontend/src/hooks/useAITradeGeneration.ts"
+        ]
+      },
+      {
+        "id": "REQ-79",
+        "summary": "Fix the order execution flow in usePositionStorage.ts and useAITradeGeneration.ts so that real Binance orders are sent when Live Trading mode is active. (1) Each call to placeMarketOrder, placeTakeProfitMarketOrder, and placeStopMarketOrder must be individually wrapped in its own try/catch block. (2) Enforce a 10-second per-call timeout using Promise.race with a timeout promise. (3) On timeout or error, log to console and show a specific toast (e.g., 'Entry order timed out — position saved locally only') then continue execution. (4) Position creation and AI trade activation must complete and persist to localStorage regardless of whether any individual Binance order call fails. (5) On success, show a toast confirming the order was placed (e.g., 'Entry order placed on Binance').",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/usePositionStorage.ts",
+          "frontend/src/hooks/useAITradeGeneration.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/usePositionStorage.ts",
+          "frontend/src/hooks/useAITradeGeneration.ts"
+        ]
+      },
+      {
+        "id": "REQ-80",
+        "summary": "Fix the authenticatedFetch helper in frontend/src/utils/binanceAuth.ts to reliably apply the 15-second timeout. (1) Create an internal AbortController with a 15-second timeout using setTimeout. (2) If the caller passes an external signal, combine both using a new AbortController that aborts when either the caller's signal fires or the 15-second timer fires. (3) Always clear the internal timeout in a finally block after the fetch resolves or rejects. (4) On timeout, throw a BinanceApiError with code 'REQUEST_TIMEOUT' and message 'Request timed out after 15 seconds'. (5) Ensure this timeout applies uniformly to all callers: BinanceCredentialsPanel test button, useLiveTradingMode validation, binanceOrderService order placement, and binancePositionService position import.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/binanceAuth.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/binanceAuth.ts"
+        ]
+      },
+      {
+        "id": "REQ-81",
+        "summary": "Fix the 'Import from Binance' button visibility in DashboardTab.tsx so it reactively appears as soon as credentials are saved. (1) Replace the static initial evaluation of hasCredentials() with a useState that is updated by listening to the 'credential-change' custom DOM event dispatched by liveTradingStorage.ts or binanceAuth.ts. (2) Register the event listener once in a useEffect with an empty dependency array, and remove it on cleanup. (3) The button must be visible solely based on hasCredentials() returning true — remove any additional guards such as live trading mode or connection test status from the visibility condition. (4) Dispatch the 'credential-change' event from BinanceCredentialsPanel.tsx immediately after saving credentials to localStorage so DashboardTab.tsx re-evaluates without a page reload.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/DashboardTab.tsx",
+          "frontend/src/components/BinanceCredentialsPanel.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/DashboardTab.tsx",
+          "frontend/src/components/BinanceCredentialsPanel.tsx"
+        ]
+      },
+      {
+        "id": "REQ-82",
+        "summary": "Fix the 'Test Connection' button in BinanceCredentialsPanel.tsx to never leave the UI in a frozen or perpetual loading state. (1) Wrap the fetch in a try/catch/finally block where the finally block always resets the loading state. (2) Apply a 15-second AbortController timeout to the fetch call. (3) If the timeout fires, display the status message: 'Connection test timed out — server did not respond in time. Your credentials may still be valid.' and clear the loading state. (4) Ensure the button is re-enabled after timeout, error, or success so the user can retry.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BinanceCredentialsPanel.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BinanceCredentialsPanel.tsx"
+        ]
+      },
+      {
+        "id": "REQ-83",
+        "summary": "Ensure the CredentialStatusIndicator component in the app header stays in sync with credential state changes without requiring a page reload. (1) Subscribe to the 'credential-change' custom DOM event in a useEffect with an empty dependency array. (2) On each event, re-evaluate hasCredentials() and isLiveTradingEnabled() and update local state. (3) Also subscribe to the 'live-trading-change' event to update the live trading indicator. (4) Clean up all event listeners on unmount. (5) The indicator must update within the same render cycle as the credential save or live trading toggle.",
+        "status": "implemented",
+        "plannedFiles": [
           "frontend/src/components/CredentialStatusIndicator.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/CredentialStatusIndicator.tsx"
+        ]
+      },
+      {
+        "id": "REQ-84",
+        "summary": "Perform a comprehensive audit of all components and hooks that use localStorage reads at the module or component initialization level (outside of useEffect or event handlers) and replace them with reactive patterns. Specifically: (1) Any call to hasCredentials(), isLiveTradingEnabled(), or getTotalCapital() that runs only once on mount must be moved inside a useState initializer combined with a useEffect that subscribes to the relevant custom DOM events ('credential-change', 'live-trading-change'). (2) Ensure the LiveTradingBanner component also subscribes reactively to the 'live-trading-change' event so it appears/disappears without a reload. (3) Document each fixed location with a comment indicating the event it listens to.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/LiveTradingBanner.tsx",
+          "frontend/src/components/PortfolioExposureDashboard.tsx",
+          "frontend/src/components/TotalCapitalSummary.tsx",
+          "frontend/src/utils/liveTradingStorage.ts",
+          "frontend/src/utils/totalCapitalStorage.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/LiveTradingBanner.tsx",
+          "frontend/src/components/PortfolioExposureDashboard.tsx",
+          "frontend/src/components/TotalCapitalSummary.tsx",
+          "frontend/src/utils/liveTradingStorage.ts",
+          "frontend/src/utils/totalCapitalStorage.ts"
         ]
       }
     ]
@@ -76,16 +138,23 @@
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
     "frontend/src/components/AIDailyTradesSection.tsx",
+    "frontend/src/components/BinanceCredentialsPanel.tsx",
     "frontend/src/components/CredentialStatusIndicator.tsx",
+    "frontend/src/components/DashboardTab.tsx",
     "frontend/src/components/LiveTradingBanner.tsx",
     "frontend/src/components/LiveTradingToggle.tsx",
+    "frontend/src/components/PortfolioExposureDashboard.tsx",
+    "frontend/src/components/RiskManagementTab.tsx",
     "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/components/TotalCapitalInput.tsx",
+    "frontend/src/components/TotalCapitalSummary.tsx",
     "frontend/src/hooks/useAITradeGeneration.ts",
-    "frontend/src/hooks/useAITradeMonitoring.ts",
     "frontend/src/hooks/useLiveTradingMode.ts",
     "frontend/src/hooks/usePositionStorage.ts",
-    "frontend/src/services/binanceOrderService.ts",
+    "frontend/src/services/binancePositionService.ts",
+    "frontend/src/utils/binanceAuth.ts",
     "frontend/src/utils/liveTradingStorage.ts",
+    "frontend/src/utils/totalCapitalStorage.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

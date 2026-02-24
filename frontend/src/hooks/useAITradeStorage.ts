@@ -2,13 +2,8 @@ import { AITrade } from '../types/aiTrade';
 
 const STORAGE_KEY = 'ai_daily_trades';
 
-function getCurrentUTCDate(): string {
-  const now = new Date();
-  return now.toISOString().split('T')[0];
-}
-
 interface StoredData {
-  utcDate: string;
+  utcDate?: string; // kept for backward compatibility, no longer used for invalidation
   trades: AITrade[];
 }
 
@@ -30,11 +25,7 @@ export function useAITradeStorage() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       const data: StoredData = JSON.parse(raw);
-      const today = getCurrentUTCDate();
-      if (data.utcDate !== today) {
-        localStorage.removeItem(STORAGE_KEY);
-        return null;
-      }
+      if (!data.trades || data.trades.length === 0) return null;
       return data.trades.map(applyDefaults);
     } catch {
       return null;
@@ -43,7 +34,6 @@ export function useAITradeStorage() {
 
   const saveTrades = (trades: AITrade[]): void => {
     const data: StoredData = {
-      utcDate: getCurrentUTCDate(),
       trades,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -53,17 +43,17 @@ export function useAITradeStorage() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  /**
+   * Returns true only when no trades are stored at all (needs initial generation).
+   * UTC date is no longer used for invalidation — trades persist until TP/SL/Reversal Guard closes them.
+   */
   const checkAndResetDaily = (): boolean => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return true; // needs generation
+      if (!raw) return true; // no trades stored, needs generation
       const data: StoredData = JSON.parse(raw);
-      const today = getCurrentUTCDate();
-      if (data.utcDate !== today) {
-        localStorage.removeItem(STORAGE_KEY);
-        return true; // needs generation
-      }
-      return false; // trades are fresh
+      if (!data.trades || data.trades.length === 0) return true;
+      return false; // trades exist, no reset needed
     } catch {
       return true;
     }

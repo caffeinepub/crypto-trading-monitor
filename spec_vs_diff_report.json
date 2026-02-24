@@ -1,34 +1,91 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T16:38:25.244Z",
-  "summary": "The diff addresses all three requirements (REQ-64, REQ-65, REQ-66) with meaningful fixes. REQ-64 is addressed via useLiveTradingMode.ts (non-blocking toggle, re-entrant guard, deferred event dispatch), LiveTradingToggle.tsx (async confirmation flow, error toast), and liveTradingStorage.ts (setTimeout-deferred events). REQ-65 is addressed via binanceOrderService.ts (new service with MARKET/TAKE_PROFIT_MARKET/STOP_MARKET), usePositionStorage.ts (per-order try/catch, fire-and-forget async, toast notifications). REQ-66 is addressed via stable refs and empty dependency arrays in useLiveTradingMode.ts, LiveTradingBanner.tsx, CredentialStatusIndicator.tsx. However, AI trade order placement in useAITradeGeneration.ts for REQ-65 is not clearly implemented.",
+  "generatedAt": "2026-02-24T19:39:53.438Z",
+  "summary": "The diff implements most of the requirements across REQ-76 through REQ-84. The majority of requirements are well-addressed: App.tsx uses simple useState for settings, BinanceCredentialsPanel dispatches credential-change, DashboardTab is reactive, CredentialStatusIndicator and LiveTradingBanner subscribe to custom events, useLiveTradingMode has 15-second credential validation timeout, usePositionStorage and useAITradeGeneration wrap orders with 10-second timeouts, binanceAuth.ts implements combined signal timeout with BinanceApiError REQUEST_TIMEOUT. However, a few specific acceptance criteria have gaps.",
   "missing_requirements": [
     {
-      "id": "REQ-65",
-      "requirement": "When Live Trading mode is ON and an AI trade is generated, the corresponding entry and TP/SL orders are placed on Binance Futures.",
-      "reason": "useAITradeGeneration.ts in the diff shows no call to binanceOrderService or placeLiveOrders for AI-generated trades. The hook only generates and stores trades without placing live orders when live trading is active.",
+      "id": "REQ-77",
+      "requirement": "If validation times out, show toast 'Credential check timed out — Live Trading enabled without verification' (exact English text per AC).",
+      "reason": "The implementation uses a Portuguese toast message instead of the required English text.",
       "evidence": [
+        "frontend/src/hooks/useLiveTradingMode.ts"
+      ]
+    },
+    {
+      "id": "REQ-77",
+      "requirement": "If the full activation flow exceeds 20 seconds, the toggle resets to OFF with an error toast. The catch block calls toggleLiveTrading(false) without await.",
+      "reason": "In LiveTradingToggle.tsx the outer timeout catch block calls toggleLiveTrading(false) without await, which may not correctly reset state when the outer timeout fires.",
+      "evidence": [
+        "frontend/src/components/LiveTradingToggle.tsx"
+      ]
+    },
+    {
+      "id": "REQ-79",
+      "requirement": "Toast messages for order timeout and success must be in English: 'Entry order timed out — position saved locally only' and 'Entry order placed on Binance'.",
+      "reason": "Both usePositionStorage.ts and useAITradeGeneration.ts use Portuguese toast messages instead of the English text specified in the AC.",
+      "evidence": [
+        "frontend/src/hooks/usePositionStorage.ts",
         "frontend/src/hooks/useAITradeGeneration.ts"
+      ]
+    },
+    {
+      "id": "REQ-80",
+      "requirement": "The authenticatedFetch 15-second timeout must apply uniformly to binancePositionService position import calls.",
+      "reason": "binancePositionService.ts implements its own separate fetchWithTimeout and HMAC signing logic rather than using authenticatedFetch from binanceAuth.ts, bypassing the unified BinanceApiError REQUEST_TIMEOUT flow.",
+      "evidence": [
+        "frontend/src/services/binancePositionService.ts"
+      ]
+    },
+    {
+      "id": "REQ-82",
+      "requirement": "Timeout message must be 'Connection test timed out — server did not respond in time. Your credentials may still be valid.'",
+      "reason": "The implementation uses a Portuguese equivalent message instead of the exact English string specified in the AC.",
+      "evidence": [
+        "frontend/src/components/BinanceCredentialsPanel.tsx"
+      ]
+    },
+    {
+      "id": "REQ-84",
+      "requirement": "Comprehensive audit of ALL components reading localStorage on mount, with each fixed location documented with a comment indicating the event it listens to.",
+      "reason": "The diff does not show changes to all components that may read localStorage on mount (e.g., PositionSizeCalculator, ScenarioSimulator are not shown), and TotalCapitalInput.tsx does not demonstrate a reactive pattern for getTotalCapital.",
+      "evidence": [
+        "frontend/src/components/TotalCapitalInput.tsx",
+        "frontend-file-summaries.txt"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.82,
+  "hallucinated_features": [
+    {
+      "description": "liveTradingStorage.ts dispatches legacy event names ('liveTradingChanged', 'credentialsChanged') alongside canonical names for backward compatibility.",
+      "reason": "The spec does not mention maintaining legacy event name backward compatibility — this was added without being requested.",
+      "evidence": [
+        "frontend/src/utils/liveTradingStorage.ts"
+      ]
+    }
+  ],
+  "confidence": 0.72,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
     "frontend/src/components/AIDailyTradesSection.tsx",
+    "frontend/src/components/BinanceCredentialsPanel.tsx",
     "frontend/src/components/CredentialStatusIndicator.tsx",
+    "frontend/src/components/DashboardTab.tsx",
     "frontend/src/components/LiveTradingBanner.tsx",
     "frontend/src/components/LiveTradingToggle.tsx",
+    "frontend/src/components/PortfolioExposureDashboard.tsx",
+    "frontend/src/components/RiskManagementTab.tsx",
     "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/components/TotalCapitalInput.tsx",
+    "frontend/src/components/TotalCapitalSummary.tsx",
     "frontend/src/hooks/useAITradeGeneration.ts",
-    "frontend/src/hooks/useAITradeMonitoring.ts",
     "frontend/src/hooks/useLiveTradingMode.ts",
     "frontend/src/hooks/usePositionStorage.ts",
-    "frontend/src/services/binanceOrderService.ts",
+    "frontend/src/services/binancePositionService.ts",
+    "frontend/src/utils/binanceAuth.ts",
     "frontend/src/utils/liveTradingStorage.ts",
+    "frontend/src/utils/totalCapitalStorage.ts",
     "project_state.json"
   ]
 }
