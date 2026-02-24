@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 21,
+  "projectStateVersion": 29,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -15,7 +15,8 @@
     "Risk management calculator with portfolio-level exposure tracking"
   ],
   "known_issues": [
-    "PWA installation via beforeinstallprompt not working reliably; user requests a direct download/install button to force the process"
+    "PWA installation via beforeinstallprompt not working reliably; user requests a direct download/install button to force the process",
+    "AI trades hitting TP1/TP2/TP3 are not executing fictitious orders or advancing risk management steps (e.g., moving SL to breakeven after TP1)"
   ],
   "isFixRequest": false,
   "existing_features": [
@@ -370,6 +371,110 @@
         "REQ-44"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-ai-trade-monitoring-logic-useaitrademonitoring-ts-and-or-useaitradegeneration-ts-so-that-when-any-ai-trade-s-status-transitions-to-tp-hit-or-sl-hit-a-new-ai-trade-for-that-same-modality-is-automatically-generated-and-replaces-the-closed-trade-without-waiting-for-the-daily-utc-reset-or-requiring-the-user-to-click-regenerate-today-s-trades-the-new-trade-must-be-selected-using-the-same-ai-trade-selection-algorithm-technical-indicators-kline-data-already-used-for-daily-generation-and-the-updated-trade-list-must-be-persisted-to-localstorage-under-the-key-ai-daily-trades",
+      "title": "Update the AI trade monitoring logic (useAITradeMonitoring.ts and/or useAITradeGeneration.ts) so that when any AI trade's status transitions to 'TP Hit' or 'SL Hit', a new AI trade for that same modality is automatically generated and replaces the closed trade — without waiting for the daily UTC reset or requiring the user to click 'Regenerate today's trades'. The new trade must be selected using the same AI trade selection algorithm (technical indicators, kline data) already used for daily generation, and the updated trade list must be persisted to localStorage under the key 'ai_daily_trades'.",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-ai-trade-selection-algorithm-frontend-src-utils-aitradeselection-ts-and-the-useaitradegeneration-hook-so-that-the-investment-amount-assigned-to-each-ai-daily-trade-is-derived-from-the-user-s-stored-total-capital-retrieved-via-totalcapitalstorage-distribute-the-capital-proportionally-across-the-four-modalities-e-g-25-each-or-a-configurable-split-if-no-total-capital-is-stored-fall-back-to-a-sensible-default-e-g-1-000-per-trade-regenerate-trades-automatically-when-the-total-capital-value-changes",
+      "title": "Update the AI trade selection algorithm (frontend/src/utils/aiTradeSelection.ts) and the useAITradeGeneration hook so that the investment amount assigned to each AI daily trade is derived from the user's stored total capital (retrieved via totalCapitalStorage). Distribute the capital proportionally across the four modalities (e.g., 25% each, or a configurable split). If no total capital is stored, fall back to a sensible default (e.g., $1,000 per trade). Regenerate trades automatically when the total capital value changes.",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-performance-comparison-panel-component-performancecomparisonpanel-tsx-that-displays-ai-trades-vs-user-manual-positions-side-by-side-for-ai-trades-aggregate-total-trades-closed-tp-hit-sl-hit-win-rate-percentage-total-pnl-in-usd-and-breakdown-by-modality-scalping-day-trading-swing-trading-trend-following-for-user-positions-aggregate-total-positions-closed-those-with-a-recorded-outcome-in-localstorage-win-rate-percentage-and-total-pnl-in-usd-display-both-sets-of-metrics-in-a-visually-comparable-card-layout-consistent-with-the-golden-themed-design",
+      "title": "Create a Performance Comparison panel component (PerformanceComparisonPanel.tsx) that displays AI trades vs user manual positions side by side. For AI trades, aggregate: total trades closed (TP Hit + SL Hit), win rate percentage, total PnL in USD, and breakdown by modality (Scalping, Day Trading, Swing Trading, Trend Following). For user positions, aggregate: total positions closed (those with a recorded outcome in localStorage), win rate percentage, and total PnL in USD. Display both sets of metrics in a visually comparable card layout consistent with the golden-themed design.",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-track-user-position-outcomes-in-localstorage-when-a-user-s-manual-position-is-deleted-from-the-positiondashboard-prompt-the-user-to-record-the-outcome-tp-hit-sl-hit-or-manually-closed-and-the-exit-price-store-this-history-in-localstorage-under-the-key-user-trade-history-as-an-array-of-closed-trade-records-symbol-position-type-entry-price-exit-price-investment-pnl-usd-pnl-outcome-timestamp-this-history-will-feed-the-performancecomparisonpanel-win-rate-and-pnl-calculations",
+      "title": "Track user position outcomes in localStorage. When a user's manual position is deleted from the PositionDashboard, prompt the user to record the outcome (TP Hit, SL Hit, or Manually Closed) and the exit price. Store this history in localStorage under the key 'user_trade_history' as an array of closed trade records (symbol, position type, entry price, exit price, investment, PnL USD, PnL %, outcome, timestamp). This history will feed the PerformanceComparisonPanel win rate and PnL calculations.",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-integrate-the-performancecomparisonpanel-into-the-ai-daily-trades-tab-aidailytradestab-tsx-placing-it-below-the-existing-aidailytradessection-the-panel-should-always-be-visible-in-that-tab-showing-live-stats-from-both-ai-trade-history-and-user-trade-history-stored-in-localstorage",
+      "title": "Integrate the PerformanceComparisonPanel into the 'AI Daily Trades' tab (AIDailyTradesTab.tsx), placing it below the existing AIDailyTradesSection. The panel should always be visible in that tab, showing live stats from both AI trade history and user trade history stored in localStorage.",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-fictitious-order-execution-logic-for-ai-trades-when-a-tp-level-is-reached-when-the-live-price-crosses-tp1-mark-tp1-as-executed-and-automatically-move-the-stop-loss-to-the-trade-s-entry-price-breakeven-when-tp2-is-reached-and-tp1-has-already-been-executed-mark-tp2-as-executed-and-move-the-stop-loss-to-tp1-price-trailing-stop-when-tp3-is-reached-and-tp2-has-already-been-executed-mark-tp3-as-executed-and-close-the-trade-with-full-tp3-profit-recorded-in-ai-trade-history-persist-the-updated-trade-state-executed-tp-levels-adjusted-sl-in-localstorage-under-the-key-ai-daily-trades",
+      "title": "Implement fictitious order execution logic for AI trades when a TP level is reached. When the live price crosses TP1, mark TP1 as 'Executed' and automatically move the stop-loss to the trade's entry price (breakeven). When TP2 is reached and TP1 has already been executed, mark TP2 as 'Executed' and move the stop-loss to TP1 price (trailing stop). When TP3 is reached and TP2 has already been executed, mark TP3 as 'Executed' and close the trade with full TP3 profit recorded in AI trade history. Persist the updated trade state (executed TP levels, adjusted SL) in localStorage under the key 'ai_daily_trades'.",
+      "reqIds": [
+        "REQ-50"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-aitradecard-component-to-visually-reflect-the-fictitious-order-execution-state-for-each-tp-level-display-a-status-badge-indicating-whether-it-is-pending-executed-or-missed-price-passed-without-execution-show-the-current-effective-stop-loss-price-with-a-label-indicating-whether-it-is-the-original-sl-breakeven-entry-or-trailing-tp1-depending-on-which-tp-levels-have-been-executed-display-a-timeline-or-step-indicator-showing-the-trade-s-progression-through-tp1-move-sl-to-entry-tp2-trail-sl-to-tp1-tp3-close",
+      "title": "Update the AITradeCard component to visually reflect the fictitious order execution state. For each TP level, display a status badge indicating whether it is 'Pending', 'Executed', or 'Missed' (price passed without execution). Show the current effective stop-loss price with a label indicating whether it is the original SL, 'Breakeven (Entry)', or 'Trailing (TP1)' depending on which TP levels have been executed. Display a timeline or step indicator showing the trade's progression through TP1 → Move SL to Entry → TP2 → Trail SL to TP1 → TP3 → Close.",
+      "reqIds": [
+        "REQ-51"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-extend-the-aitrade-typescript-type-frontend-src-types-aitrade-ts-to-support-partial-tp-execution-state-add-fields-tp1executed-boolean-tp2executed-boolean-tp3executed-boolean-effectivesl-number-the-current-active-stop-loss-price-after-any-trailing-adjustments-and-riskmanagementstep-enum-or-string-initial-breakeven-trailing-closed-ensure-these-fields-are-optional-with-sensible-defaults-for-backward-compatibility-with-existing-stored-trades",
+      "title": "Extend the AITrade TypeScript type (frontend/src/types/aiTrade.ts) to support partial TP execution state. Add fields: 'tp1Executed' (boolean), 'tp2Executed' (boolean), 'tp3Executed' (boolean), 'effectiveSL' (number — the current active stop-loss price after any trailing adjustments), and 'riskManagementStep' (enum or string: 'initial' | 'breakeven' | 'trailing' | 'closed'). Ensure these fields are optional with sensible defaults for backward compatibility with existing stored trades.",
+      "reqIds": [
+        "REQ-52"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-a-market-reversal-detection-algorithm-in-the-frontend-frontend-src-utils-marketreversaldetector-ts-that-analyzes-recent-binance-kline-data-to-identify-potential-trend-reversals-the-algorithm-must-evaluate-momentum-divergence-rsi-divergence-from-price-action-ema-crossover-signals-short-term-ema-crossing-long-term-ema-in-the-opposite-direction-of-the-trade-significant-candlestick-reversal-patterns-engulfing-candles-shooting-stars-hammers-atr-based-volatility-spikes-that-signal-structural-breaks-and-support-resistance-zone-violations-the-function-must-accept-the-current-aitrade-parameters-symbol-position-type-entry-price-effective-sl-current-price-tp-execution-state-and-return-a-reversalsignal-object-containing-detectedreversal-boolean-confidence-0-100-reason-string-description-recommendedaction-close-reverse-tighten-sl-none-and-suggestednewsl-number-optional",
+      "title": "Implement a market reversal detection algorithm in the frontend (frontend/src/utils/marketReversalDetector.ts) that analyzes recent Binance kline data to identify potential trend reversals. The algorithm must evaluate: momentum divergence (RSI divergence from price action), EMA crossover signals (short-term EMA crossing long-term EMA in the opposite direction of the trade), significant candlestick reversal patterns (engulfing candles, shooting stars, hammers), ATR-based volatility spikes that signal structural breaks, and support/resistance zone violations. The function must accept the current AITrade parameters (symbol, position type, entry price, effective SL, current price, TP execution state) and return a ReversalSignal object containing: detectedReversal (boolean), confidence (0–100), reason (string description), recommendedAction ('close' | 'reverse' | 'tighten_sl' | 'none'), and suggestedNewSL (number, optional).",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-extend-the-aitrade-typescript-type-frontend-src-types-aitrade-ts-to-include-reversal-detection-state-fields-reversaldetected-boolean-reversalconfidence-number-0-100-reversalreason-string-reversalaction-string-close-reverse-tighten-sl-none-and-profitprotectionsl-number-the-tightened-stop-loss-price-set-by-reversal-protection-logic-all-fields-must-be-optional-with-sensible-defaults-reversaldetected-false-reversalconfidence-0-reversalaction-none-for-backward-compatibility-with-existing-stored-trades",
+      "title": "Extend the AITrade TypeScript type (frontend/src/types/aiTrade.ts) to include reversal detection state fields: 'reversalDetected' (boolean), 'reversalConfidence' (number 0–100), 'reversalReason' (string), 'reversalAction' (string: 'close' | 'reverse' | 'tighten_sl' | 'none'), and 'profitProtectionSL' (number — the tightened stop-loss price set by reversal protection logic). All fields must be optional with sensible defaults (reversalDetected: false, reversalConfidence: 0, reversalAction: 'none') for backward compatibility with existing stored trades.",
+      "reqIds": [
+        "REQ-54"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-integrate-the-market-reversal-detection-algorithm-into-the-useaitrademonitoring-hook-frontend-src-hooks-useaitrademonitoring-ts-on-each-price-polling-cycle-for-every-open-ai-trade-with-status-open-run-detectreversal-from-marketreversaldetector-ts-based-on-the-returned-reversalsignal-1-if-recommendedaction-is-close-immediately-set-trade-status-to-sl-hit-closed-by-reversal-protection-record-the-exit-at-current-price-in-ai-trade-history-with-a-note-closed-by-reversal-detection-and-trigger-auto-regeneration-for-that-modality-2-if-recommendedaction-is-reverse-and-the-trade-has-passed-tp1-tp1executed-is-true-close-the-current-trade-at-current-price-with-profit-recorded-then-queue-a-new-trade-for-that-modality-in-the-opposite-direction-3-if-recommendedaction-is-tighten-sl-update-the-trade-s-effectivesl-to-the-suggestednewsl-value-and-set-profitprotectionsl-accordingly-and-persist-to-localstorage-update-the-stored-trade-in-localstorage-under-ai-daily-trades-after-each-action",
+      "title": "Integrate the market reversal detection algorithm into the useAITradeMonitoring hook (frontend/src/hooks/useAITradeMonitoring.ts). On each price polling cycle, for every open AI trade with status 'Open', run detectReversal from marketReversalDetector.ts. Based on the returned ReversalSignal: (1) If recommendedAction is 'close' — immediately set trade status to 'SL Hit' (closed by reversal protection), record the exit at current price in AI trade history with a note 'Closed by reversal detection', and trigger auto-regeneration for that modality. (2) If recommendedAction is 'reverse' and the trade has passed TP1 (tp1Executed is true) — close the current trade at current price with profit recorded, then queue a new trade for that modality in the opposite direction. (3) If recommendedAction is 'tighten_sl' — update the trade's effectiveSL to the suggestedNewSL value and set profitProtectionSL accordingly, and persist to localStorage. Update the stored trade in localStorage under 'ai_daily_trades' after each action.",
+      "reqIds": [
+        "REQ-55"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-aitradecard-component-frontend-src-components-aitradecard-tsx-to-visually-display-the-reversal-detection-state-when-reversaldetected-is-true-show-a-prominent-amber-orange-warning-banner-inside-the-card-with-the-reversalreason-text-and-a-badge-indicating-the-action-taken-e-g-reversal-detected-sl-tightened-reversal-detected-trade-closed-reversal-detected-direction-reversed-when-reversalaction-is-tighten-sl-display-the-profitprotectionsl-price-alongside-the-effectivesl-with-a-label-profit-protection-sl-when-a-trade-was-closed-by-reversal-detection-show-a-distinct-status-badge-closed-reversal-guard-in-addition-to-the-normal-closed-state-the-reversal-warning-must-use-the-existing-golden-themed-design-system-amber-orange-tones-from-the-existing-css-variables-and-not-introduce-new-color-tokens",
+      "title": "Update the AITradeCard component (frontend/src/components/AITradeCard.tsx) to visually display the reversal detection state. When reversalDetected is true, show a prominent amber/orange warning banner inside the card with the reversalReason text and a badge indicating the action taken (e.g., 'Reversal Detected — SL Tightened', 'Reversal Detected — Trade Closed', 'Reversal Detected — Direction Reversed'). When reversalAction is 'tighten_sl', display the profitProtectionSL price alongside the effectiveSL with a label 'Profit Protection SL'. When a trade was closed by reversal detection, show a distinct status badge 'Closed — Reversal Guard' in addition to the normal closed state. The reversal warning must use the existing golden-themed design system (amber/orange tones from the existing CSS variables) and not introduce new color tokens.",
+      "reqIds": [
+        "REQ-56"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-reversal-guard-summary-metric-to-the-aidailytradessummary-component-frontend-src-components-aidailytradessummary-tsx-that-counts-how-many-trades-were-protected-closed-or-reversed-by-the-reversal-detection-algorithm-today-display-this-as-a-small-stat-alongside-the-existing-pnl-summary-e-g-reversal-guards-2-so-users-can-see-how-many-times-the-ai-protected-profits-during-the-day",
+      "title": "Add a 'Reversal Guard' summary metric to the AIDailyTradesSummary component (frontend/src/components/AIDailyTradesSummary.tsx) that counts how many trades were protected (closed or reversed) by the reversal detection algorithm today. Display this as a small stat alongside the existing PnL summary (e.g., 'Reversal Guards: 2') so users can see how many times the AI protected profits during the day.",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -478,6 +583,30 @@
     {
       "id": "AR-18",
       "summary": "Organize app into tabs: Dashboard, AI Daily Trades, AI Insights, Risk Management",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Auto-regenerate a new AI trade for a modality when its current trade hits TP or SL, without waiting for the daily UTC reset",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Use user's portfolio value as the base investment amount for AI daily trades, and add a comparative performance panel showing AI vs user trade accuracy and PnL side by side",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "When an AI trade hits TP1/TP2/TP3, execute the fictitious order and advance to the next risk management step (e.g., move SL to entry after TP1, trail SL after TP2, etc.)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-22",
+      "summary": "AI should recognize market reversals and be able to reverse trade direction or close positions early to protect accumulated profits before they erode",
       "reqIds": [],
       "status": "pending"
     }

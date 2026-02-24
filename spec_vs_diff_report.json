@@ -1,37 +1,45 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T13:36:36.290Z",
-  "summary": "The diff implements a tab-based navigation system for the app with four tabs (Dashboard, AI Daily Trades, AI Insights, Risk Management). Most requirements are well-addressed. Key gaps include: the AIDailyTradesSummary component is missing from the AI Daily Trades tab (REQ-42 AC), and the TotalCapitalSummary is moved into the Dashboard tab rather than remaining in the header across all tabs (REQ-40 AC mentions capital summary remains visible regardless of active tab).",
+  "generatedAt": "2026-02-24T15:40:57.801Z",
+  "summary": "The diff implements most of the requested requirements (REQ-53 through REQ-57). REQ-53 (marketReversalDetector.ts), REQ-54 (aiTrade.ts type extensions), REQ-55 (useAITradeMonitoring integration), REQ-56 (AITradeCard visual updates), and REQ-57 (AIDailyTradesSummary metric) are all present. However, several specific acceptance criteria have gaps: REQ-54's AITradeWithPrice is missing profitProtectionSL in the resolved non-optional fields; REQ-56's badge uses 'Reversal Guard' wording instead of the specified 'Closed — Reversal Guard'; REQ-55's reverse action queuing a new opposite-direction trade is not confirmed in the truncated diff.",
   "missing_requirements": [
     {
-      "id": "REQ-42",
-      "requirement": "AI Daily Trades tab should display the AIDailyTradesSummary header/banner showing total AI portfolio PnL, in addition to AIDailyTradesSection.",
-      "reason": "AIDailyTradesTab.tsx only renders AIDailyTradesSection and does not import or render AIDailyTradesSummary. The AC explicitly requires the AIDailyTradesSummary component showing total AI portfolio PnL.",
+      "id": "REQ-54",
+      "requirement": "AITradeWithPrice interface must also reflect profitProtectionSL as a resolved non-optional field",
+      "reason": "In frontend/src/types/aiTrade.ts, the AITradeWithPrice interface includes reversalDetected, reversalConfidence, reversalReason, and reversalAction as resolved fields, but profitProtectionSL is absent from AITradeWithPrice — it only appears as optional in AITrade.",
       "evidence": [
-        "frontend/src/components/AIDailyTradesTab.tsx"
+        "frontend/src/types/aiTrade.ts"
       ]
     },
     {
-      "id": "REQ-40",
-      "requirement": "The app header (logo, install button, capital summary) remains visible regardless of active tab.",
-      "reason": "TotalCapitalSummary is placed inside DashboardTab, meaning it is only visible on the Dashboard tab and not persistent in the header across all tabs. The AC states capital summary should remain visible regardless of active tab.",
+      "id": "REQ-56",
+      "requirement": "Trades closed by reversal detection must show a 'Closed — Reversal Guard' status badge with that exact label",
+      "reason": "The diff renders the badge as '🛡 Reversal Guard' rather than the AC-specified 'Closed — Reversal Guard' text.",
       "evidence": [
-        "frontend/src/components/DashboardTab.tsx",
-        "frontend/src/App.tsx"
+        "frontend/src/components/AITradeCard.tsx"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.8,
+  "hallucinated_features": [
+    {
+      "description": "A dedicated frontend/src/types/reversal.ts file was created containing ReversalSignal and auxiliary interfaces (RSIDivergence, EMACrossover, CandlestickPattern, VolatilitySpike, SupportResistanceViolation)",
+      "reason": "The build request only specified that detectReversal returns a ReversalSignal object; it did not request a separate reversal.ts types file. The types were not required to be in their own file.",
+      "evidence": [
+        "frontend/src/types/reversal.ts"
+      ]
+    }
+  ],
+  "confidence": 0.72,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/components/AIDailyTradesTab.tsx",
-    "frontend/src/components/AIInsightsTab.tsx",
-    "frontend/src/components/DashboardTab.tsx",
-    "frontend/src/components/RiskManagementTab.tsx",
-    "frontend/src/components/TabNavigation.tsx",
+    "frontend/src/components/AIDailyTradesSummary.tsx",
+    "frontend/src/components/AITradeCard.tsx",
+    "frontend/src/hooks/useAITradeMonitoring.ts",
+    "frontend/src/types/aiTrade.ts",
+    "frontend/src/types/reversal.ts",
+    "frontend/src/types/tradeHistory.ts",
+    "frontend/src/utils/marketReversalDetector.ts",
     "project_state.json"
   ]
 }

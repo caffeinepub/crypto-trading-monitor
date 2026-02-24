@@ -1,15 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Reorganize the Crypto Position Monitor app into a four-tab navigation layout without changing any existing component logic or styling.
+**Goal:** Add AI-powered market reversal detection to the Crypto Position Monitor so that open AI trades are automatically protected from losing accumulated profits when the market reverses direction.
 
 **Planned changes:**
-- Add a persistent tab bar below the app header with four tabs: Dashboard, AI Daily Trades, AI Insights, and Risk Management
-- Keep the header (logo, install button, capital summary) always visible above the tab bar
-- **Dashboard tab** (default): TotalCapitalSummary, PositionEntryForm, and PositionDashboard
-- **AI Daily Trades tab**: AIDailyTradesSummary banner and AIDailyTradesSection with all four modality trade cards
-- **AI Insights tab**: Per-position groupings of SentimentGauge, TrendPredictionCard, and AdjustmentSuggestionCard; shows empty-state message when no positions exist
-- **Risk Management tab**: PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator in a responsive layout
-- Tab bar styled with the existing golden accent theme; active tab clearly highlighted
+- Create `frontend/src/utils/marketReversalDetector.ts` with a `detectReversal` function that fetches Binance kline data and evaluates RSI divergence, EMA crossovers, candlestick reversal patterns, ATR volatility spikes, and support/resistance violations, returning a `ReversalSignal` object with confidence score and recommended action
+- Extend `AITrade` type in `frontend/src/types/aiTrade.ts` with optional reversal state fields: `reversalDetected`, `reversalConfidence`, `reversalReason`, `reversalAction`, and `profitProtectionSL`
+- Integrate reversal detection into `useAITradeMonitoring` hook so that on each polling cycle it runs `detectReversal` for every open trade and acts accordingly: closes the trade (confidence > 75%), reverses direction (confidence > 85% and TP1 executed), or tightens the stop-loss (confidence 50–75%)
+- Update `AITradeCard` component to show an amber/orange warning banner when a reversal is detected, display a "Profit Protection SL" label when SL is tightened, and show a "Closed — Reversal Guard" status badge for trades closed by reversal detection
+- Add a "Reversal Guards" count metric to `AIDailyTradesSummary` showing how many trades were protected by reversal detection today
 
-**User-visible outcome:** Users can switch between four organized tabs to access their active positions/dashboard, AI daily trades, AI insights per position, and risk management tools, all within the existing golden-themed design.
+**User-visible outcome:** Users can see when the AI detects a market reversal on any open AI trade, observe the automatic protective action taken (SL tightened, trade closed, or direction reversed), and view a daily summary of how many times the AI guarded their profits.

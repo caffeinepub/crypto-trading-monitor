@@ -12,6 +12,18 @@ interface StoredData {
   trades: AITrade[];
 }
 
+/** Apply default values for new execution-state fields to maintain backward compatibility */
+function applyDefaults(trade: AITrade): AITrade {
+  return {
+    ...trade,
+    tp1Executed: trade.tp1Executed ?? false,
+    tp2Executed: trade.tp2Executed ?? false,
+    tp3Executed: trade.tp3Executed ?? false,
+    effectiveSL: trade.effectiveSL ?? trade.stopLoss,
+    riskManagementStep: trade.riskManagementStep ?? 'initial',
+  };
+}
+
 export function useAITradeStorage() {
   const getTrades = (): AITrade[] | null => {
     try {
@@ -23,7 +35,7 @@ export function useAITradeStorage() {
         localStorage.removeItem(STORAGE_KEY);
         return null;
       }
-      return data.trades;
+      return data.trades.map(applyDefaults);
     } catch {
       return null;
     }

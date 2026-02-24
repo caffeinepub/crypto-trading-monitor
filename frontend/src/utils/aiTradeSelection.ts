@@ -178,9 +178,20 @@ function generateReasoningSummary(
   return `${modalityDesc[modality]} Selected ${symbol} ${direction} based on ${trendStr} market structure with RSI at ${rsiStr}. ${emaRelation} with ${momentumStr}% momentum. ATR-based TP/SL levels set for optimal risk-reward ratio.`;
 }
 
-export async function generateAITradeForModality(modality: TradingModality): Promise<AITrade> {
+const DEFAULT_INVESTMENT = 1000;
+
+/**
+ * Generate an AI trade for a given modality.
+ * @param modality - The trading modality to generate a trade for.
+ * @param investmentAmount - Optional investment amount (defaults to $1,000 if not provided).
+ */
+export async function generateAITradeForModality(
+  modality: TradingModality,
+  investmentAmount?: number
+): Promise<AITrade> {
   const config = MODALITY_CONFIG[modality];
   const candidates = CANDIDATE_SYMBOLS[modality];
+  const investment = investmentAmount !== undefined && investmentAmount > 0 ? investmentAmount : DEFAULT_INVESTMENT;
 
   // Fetch klines for all candidates and score them
   const results: Array<{ symbol: string; indicators: TechnicalIndicators }> = [];
@@ -210,7 +221,6 @@ export async function generateAITradeForModality(modality: TradingModality): Pro
 
   const direction: 'Long' | 'Short' = best.indicators.trend === 'bearish' ? 'Short' : 'Long';
   const leverage = randomInRange(config.leverageMin, config.leverageMax);
-  const investmentAmount = randomInRange(100, 500);
 
   const atrOffset = best.indicators.atr > 0 ? best.indicators.atr : currentPrice * 0.005;
 
@@ -236,7 +246,7 @@ export async function generateAITradeForModality(modality: TradingModality): Pro
     positionType: direction,
     entryPrice: currentPrice,
     leverage,
-    investmentAmount,
+    investmentAmount: investment,
     tp1,
     tp2,
     tp3,

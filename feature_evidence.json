@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-refactor-the-main-app-tsx-layout-to-use-a-tab-based-navigation-system-with-four-tabs-dashboard-ai-daily-trades-ai-insights-and-risk-management-the-header-logo-install-download-app-button-must-remain-visible-at-all-times-above-the-tab-bar-only-the-content-of-the-active-tab-should-be-rendered-or-kept-mounted-but-hidden-to-avoid-layout-shifts",
-      "featureTitle": "Refactor the main App.tsx layout to use a tab-based navigation system with four tabs: 'Dashboard', 'AI Daily Trades', 'AI Insights', and 'Risk Management'. The header (logo, Install/Download App button) must remain visible at all times above the tab bar. Only the content of the active tab should be rendered (or kept mounted but hidden) to avoid layout shifts.",
+      "featureId": "feature-implement-a-market-reversal-detection-algorithm-in-the-frontend-frontend-src-utils-marketreversaldetector-ts-that-analyzes-recent-binance-kline-data-to-identify-potential-trend-reversals-the-algorithm-must-evaluate-momentum-divergence-rsi-divergence-from-price-action-ema-crossover-signals-short-term-ema-crossing-long-term-ema-in-the-opposite-direction-of-the-trade-significant-candlestick-reversal-patterns-engulfing-candles-shooting-stars-hammers-atr-based-volatility-spikes-that-signal-structural-breaks-and-support-resistance-zone-violations-the-function-must-accept-the-current-aitrade-parameters-symbol-position-type-entry-price-effective-sl-current-price-tp-execution-state-and-return-a-reversalsignal-object-containing-detectedreversal-boolean-confidence-0-100-reason-string-description-recommendedaction-close-reverse-tighten-sl-none-and-suggestednewsl-number-optional",
+      "featureTitle": "Implement a market reversal detection algorithm in the frontend (frontend/src/utils/marketReversalDetector.ts) that analyzes recent Binance kline data to identify potential trend reversals. The algorithm must evaluate: momentum divergence (RSI divergence from price action), EMA crossover signals (short-term EMA crossing long-term EMA in the opposite direction of the trade), significant candlestick reversal patterns (engulfing candles, shooting stars, hammers), ATR-based volatility spikes that signal structural breaks, and support/resistance zone violations. The function must accept the current AITrade parameters (symbol, position type, entry price, effective SL, current price, TP execution state) and return a ReversalSignal object containing: detectedReversal (boolean), confidence (0–100), reason (string description), recommendedAction ('close' | 'reverse' | 'tighten_sl' | 'none'), and suggestedNewSL (number, optional).",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/TabNavigation.tsx"
+        "frontend/src/types/reversal.ts",
+        "frontend/src/utils/marketReversalDetector.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -16,16 +16,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-40"
+        "REQ-53"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-move-the-dashboard-tab-content-to-include-the-totalcapitalsummary-card-the-positionentryform-and-the-positiondashboard-active-positions-list-with-real-time-pnl-this-tab-should-be-the-default-active-tab-on-app-load",
-      "featureTitle": "Move the Dashboard tab content to include: the TotalCapitalSummary card, the PositionEntryForm, and the PositionDashboard (active positions list with real-time PnL). This tab should be the default active tab on app load.",
+      "featureId": "feature-extend-the-aitrade-typescript-type-frontend-src-types-aitrade-ts-to-include-reversal-detection-state-fields-reversaldetected-boolean-reversalconfidence-number-0-100-reversalreason-string-reversalaction-string-close-reverse-tighten-sl-none-and-profitprotectionsl-number-the-tightened-stop-loss-price-set-by-reversal-protection-logic-all-fields-must-be-optional-with-sensible-defaults-reversaldetected-false-reversalconfidence-0-reversalaction-none-for-backward-compatibility-with-existing-stored-trades",
+      "featureTitle": "Extend the AITrade TypeScript type (frontend/src/types/aiTrade.ts) to include reversal detection state fields: 'reversalDetected' (boolean), 'reversalConfidence' (number 0–100), 'reversalReason' (string), 'reversalAction' (string: 'close' | 'reverse' | 'tighten_sl' | 'none'), and 'profitProtectionSL' (number — the tightened stop-loss price set by reversal protection logic). All fields must be optional with sensible defaults (reversalDetected: false, reversalConfidence: 0, reversalAction: 'none') for backward compatibility with existing stored trades.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/DashboardTab.tsx"
+        "frontend/src/types/aiTrade.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -35,16 +34,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-41"
+        "REQ-54"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-move-the-ai-daily-trades-content-aidailytradessection-component-and-its-aidailytradessummary-header-into-the-ai-daily-trades-tab-this-tab-should-display-the-daily-performance-summary-banner-and-the-four-modality-trade-cards-scalping-day-trading-swing-trading-trend-following",
-      "featureTitle": "Move the AI Daily Trades content (AIDailyTradesSection component and its AIDailyTradesSummary header) into the 'AI Daily Trades' tab. This tab should display the daily performance summary banner and the four modality trade cards (Scalping, Day Trading, Swing Trading, Trend Following).",
+      "featureId": "feature-integrate-the-market-reversal-detection-algorithm-into-the-useaitrademonitoring-hook-frontend-src-hooks-useaitrademonitoring-ts-on-each-price-polling-cycle-for-every-open-ai-trade-with-status-open-run-detectreversal-from-marketreversaldetector-ts-based-on-the-returned-reversalsignal-1-if-recommendedaction-is-close-immediately-set-trade-status-to-sl-hit-closed-by-reversal-protection-record-the-exit-at-current-price-in-ai-trade-history-with-a-note-closed-by-reversal-detection-and-trigger-auto-regeneration-for-that-modality-2-if-recommendedaction-is-reverse-and-the-trade-has-passed-tp1-tp1executed-is-true-close-the-current-trade-at-current-price-with-profit-recorded-then-queue-a-new-trade-for-that-modality-in-the-opposite-direction-3-if-recommendedaction-is-tighten-sl-update-the-trade-s-effectivesl-to-the-suggestednewsl-value-and-set-profitprotectionsl-accordingly-and-persist-to-localstorage-update-the-stored-trade-in-localstorage-under-ai-daily-trades-after-each-action",
+      "featureTitle": "Integrate the market reversal detection algorithm into the useAITradeMonitoring hook (frontend/src/hooks/useAITradeMonitoring.ts). On each price polling cycle, for every open AI trade with status 'Open', run detectReversal from marketReversalDetector.ts. Based on the returned ReversalSignal: (1) If recommendedAction is 'close' — immediately set trade status to 'SL Hit' (closed by reversal protection), record the exit at current price in AI trade history with a note 'Closed by reversal detection', and trigger auto-regeneration for that modality. (2) If recommendedAction is 'reverse' and the trade has passed TP1 (tp1Executed is true) — close the current trade at current price with profit recorded, then queue a new trade for that modality in the opposite direction. (3) If recommendedAction is 'tighten_sl' — update the trade's effectiveSL to the suggestedNewSL value and set profitProtectionSL accordingly, and persist to localStorage. Update the stored trade in localStorage under 'ai_daily_trades' after each action.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/AIDailyTradesTab.tsx"
+        "frontend/src/hooks/useAITradeMonitoring.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -54,16 +52,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-42"
+        "REQ-55"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-create-an-ai-insights-tab-that-consolidates-all-per-position-ai-analysis-features-sentimentgauge-trendpredictioncard-and-adjustmentsuggestioncard-components-group-these-by-active-position-showing-the-symbol-as-a-section-heading-if-no-positions-exist-display-an-empty-state-message-prompting-the-user-to-add-a-position-from-the-dashboard-tab",
-      "featureTitle": "Create an 'AI Insights' tab that consolidates all per-position AI analysis features: SentimentGauge, TrendPredictionCard, and AdjustmentSuggestionCard components. Group these by active position, showing the symbol as a section heading. If no positions exist, display an empty-state message prompting the user to add a position from the Dashboard tab.",
+      "featureId": "feature-update-the-aitradecard-component-frontend-src-components-aitradecard-tsx-to-visually-display-the-reversal-detection-state-when-reversaldetected-is-true-show-a-prominent-amber-orange-warning-banner-inside-the-card-with-the-reversalreason-text-and-a-badge-indicating-the-action-taken-e-g-reversal-detected-sl-tightened-reversal-detected-trade-closed-reversal-detected-direction-reversed-when-reversalaction-is-tighten-sl-display-the-profitprotectionsl-price-alongside-the-effectivesl-with-a-label-profit-protection-sl-when-a-trade-was-closed-by-reversal-detection-show-a-distinct-status-badge-closed-reversal-guard-in-addition-to-the-normal-closed-state-the-reversal-warning-must-use-the-existing-golden-themed-design-system-amber-orange-tones-from-the-existing-css-variables-and-not-introduce-new-color-tokens",
+      "featureTitle": "Update the AITradeCard component (frontend/src/components/AITradeCard.tsx) to visually display the reversal detection state. When reversalDetected is true, show a prominent amber/orange warning banner inside the card with the reversalReason text and a badge indicating the action taken (e.g., 'Reversal Detected — SL Tightened', 'Reversal Detected — Trade Closed', 'Reversal Detected — Direction Reversed'). When reversalAction is 'tighten_sl', display the profitProtectionSL price alongside the effectiveSL with a label 'Profit Protection SL'. When a trade was closed by reversal detection, show a distinct status badge 'Closed — Reversal Guard' in addition to the normal closed state. The reversal warning must use the existing golden-themed design system (amber/orange tones from the existing CSS variables) and not introduce new color tokens.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/AIInsightsTab.tsx"
+        "frontend/src/components/AITradeCard.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -73,16 +70,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-43"
+        "REQ-56"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-create-a-risk-management-tab-that-contains-the-positionsizecalculator-portfolioexposuredashboard-and-scenariosimulator-components-arrange-them-in-a-logical-vertical-or-grid-layout-consistent-with-the-golden-themed-card-design",
-      "featureTitle": "Create a 'Risk Management' tab that contains the PositionSizeCalculator, PortfolioExposureDashboard, and ScenarioSimulator components. Arrange them in a logical vertical or grid layout consistent with the golden-themed card design.",
+      "featureId": "feature-add-a-reversal-guard-summary-metric-to-the-aidailytradessummary-component-frontend-src-components-aidailytradessummary-tsx-that-counts-how-many-trades-were-protected-closed-or-reversed-by-the-reversal-detection-algorithm-today-display-this-as-a-small-stat-alongside-the-existing-pnl-summary-e-g-reversal-guards-2-so-users-can-see-how-many-times-the-ai-protected-profits-during-the-day",
+      "featureTitle": "Add a 'Reversal Guard' summary metric to the AIDailyTradesSummary component (frontend/src/components/AIDailyTradesSummary.tsx) that counts how many trades were protected (closed or reversed) by the reversal detection algorithm today. Display this as a small stat alongside the existing PnL summary (e.g., 'Reversal Guards: 2') so users can see how many times the AI protected profits during the day.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/RiskManagementTab.tsx"
+        "frontend/src/components/AIDailyTradesSummary.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -92,7 +88,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-44"
+        "REQ-57"
       ],
       "confidence": "high"
     }
