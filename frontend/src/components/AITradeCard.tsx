@@ -22,6 +22,7 @@ import {
   RotateCcw,
   XCircle,
   Send,
+  Loader2,
 } from 'lucide-react';
 import {
   isLiveTradingEnabled,
@@ -31,6 +32,7 @@ import {
 
 interface AITradeCardProps {
   trade: AITradeWithPrice;
+  priceLoading?: boolean;
 }
 
 const MODALITY_CONFIG: Record<
@@ -87,6 +89,7 @@ function formatPnl(value: number): string {
 
 function getTpProgress(trade: AITradeWithPrice, tp: number): number {
   const { entryPrice, currentPrice, positionType } = trade;
+  if (!currentPrice || currentPrice === 0) return 0;
   if (positionType === 'Long') {
     if (tp <= entryPrice) return 0;
     const progress = ((currentPrice - entryPrice) / (tp - entryPrice)) * 100;
@@ -99,8 +102,9 @@ function getTpProgress(trade: AITradeWithPrice, tp: number): number {
 }
 
 function isNearSL(trade: AITradeWithPrice): boolean {
+  if (!trade.currentPrice || trade.currentPrice === 0) return false;
   const effectiveSL = trade.effectiveSL ?? trade.stopLoss;
-  const { currentPrice, entryPrice, positionType } = trade;
+  const { currentPrice, entryPrice } = trade;
   const totalRange = Math.abs(entryPrice - effectiveSL);
   if (totalRange === 0) return false;
   const distanceToSL = Math.abs(currentPrice - effectiveSL);
@@ -110,7 +114,6 @@ function isNearSL(trade: AITradeWithPrice): boolean {
 function getStatusBadge(trade: AITradeWithPrice) {
   const { status, reversalAction } = trade;
 
-  // Special badge for reversal-closed trades
   if ((status === 'SLHit' || status === 'TPHit') && (reversalAction === 'close' || reversalAction === 'reverse')) {
     return (
       <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
@@ -226,10 +229,7 @@ function TPLevelRow({ label, price, progress, executed }: TPLevelRowProps) {
         </div>
       </div>
       {!executed && (
-        <Progress
-          value={progress}
-          className="h-1.5"
-        />
+        <Progress value={progress} className="h-1.5" />
       )}
       {executed && (
         <div className="h-1.5 rounded-full bg-emerald-500/40 w-full" />
@@ -278,8 +278,6 @@ function RiskStepIndicator({ currentStep }: RiskStepIndicatorProps) {
   );
 }
 
-// ─── Reversal Warning Banner ──────────────────────────────────────────────────
-
 interface ReversalBannerProps {
   reversalReason: string;
   reversalAction: string;
@@ -314,8 +312,6 @@ function ReversalBanner({ reversalReason, reversalAction, reversalConfidence }: 
     </div>
   );
 }
-
-// ─── Per-Modality Live Orders Toggle ─────────────────────────────────────────
 
 interface ModalityLiveToggleProps {
   modality: TradingModality;
@@ -410,20 +406,26 @@ function ModalityLiveToggle({ modality }: ModalityLiveToggleProps) {
   );
 }
 
-export function AITradeCard({ trade }: AITradeCardProps) {
+export function AITradeCard({ trade, priceLoading = false }: AITradeCardProps) {
   const modalityConf = MODALITY_CONFIG[trade.modality];
   const isLong = trade.positionType === 'Long';
-  const isProfitable = trade.pnlUsd >= 0;
+
+  // A valid live price means: currentPrice is a finite number greater than zero
+  const hasValidPrice = isFinite(trade.currentPrice) && trade.currentPrice > 0;
+
+  // PnL is loading when: explicitly told price is loading OR we don't have a valid price yet
+  const pnlIsLoading = priceLoading || !hasValidPrice;
+
+  // Only consider PnL values meaningful when we have a valid price
+  const isProfitable = hasValidPrice ? trade.pnlUsd >= 0 : true;
   const nearSL = isNearSL(trade);
 
-  // Resolve execution state with defaults for backward compatibility
   const tp1Executed = trade.tp1Executed ?? false;
   const tp2Executed = trade.tp2Executed ?? false;
   const tp3Executed = trade.tp3Executed ?? false;
   const effectiveSL = trade.effectiveSL ?? trade.stopLoss;
   const riskManagementStep: RiskManagementStep = trade.riskManagementStep ?? 'initial';
 
-  // Resolve reversal state
   const reversalDetected = trade.reversalDetected ?? false;
   const reversalConfidence = trade.reversalConfidence ?? 0;
   const reversalReason = trade.reversalReason ?? '';
@@ -495,34 +497,43 @@ export function AITradeCard({ trade }: AITradeCardProps) {
               {trade.leverage}x
             </Badge>
           </div>
-          {/* PnL */}
-          <div className="text-right">
-            <div
-              className={`text-lg font-bold ${
-                isProfitable ? 'text-emerald-400' : 'text-destructive'
-              }`}
-            >
-              {formatPnl(trade.pnlUsd)} USDT
-            </div>
-            <div
-              className={`text-xs font-medium ${
-                isProfitable ? 'text-emerald-400/80' : 'text-destructive/80'
-              }`}
-            >
-              {formatPnl(trade.pnlPercent)}%
-            </div>
+
+          {/* PnL — shows spinner/dash while price is loading */}
+          <div className="text-right min-w-[80px]">
+            {pnlIsLoading ? (
+              <div className="flex items-center justify-end gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground font-medium">—</span>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={`text-lg font-bold ${
+                    isProfitable ? 'text-emerald-400' : 'text-destructive'
+                  }`}
+                >
+                  {formatPnl(trade.pnlUsd)} USDT
+                </div>
+                <div
+                  className={`text-xs font-medium ${
+                    isProfitable ? 'text-emerald-400/80' : 'text-destructive/80'
+                  }`}
+                >
+                  {formatPnl(trade.pnlPercent)}%
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Risk Management Step Indicator */}
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Gestão de Risco</span>
+        {/* Risk Step Indicator */}
+        <div className="mt-2">
           <RiskStepIndicator currentStep={riskManagementStep} />
         </div>
       </CardHeader>
 
       <CardContent className="px-4 pb-4 space-y-3">
-        {/* Reversal Detection Warning Banner */}
+        {/* Reversal Banner */}
         {reversalDetected && reversalAction !== 'none' && (
           <ReversalBanner
             reversalReason={reversalReason}
@@ -531,85 +542,99 @@ export function AITradeCard({ trade }: AITradeCardProps) {
           />
         )}
 
-        {/* SL Warning */}
-        {nearSL && trade.status === 'Open' && !reversalDetected && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs font-medium">
+        {/* Near SL Warning */}
+        {nearSL && !reversalDetected && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-            Preço se aproximando do Stop Loss — monitore de perto
+            <span>Preço próximo ao Stop Loss!</span>
           </div>
         )}
 
-        {/* TP1 Executed notification */}
-        {anyTPExecuted && trade.status === 'Open' && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-            {tp2Executed
-              ? 'TP2 executado — SL movido para TP1 (trailing)'
-              : 'TP1 executado — SL movido para entrada (breakeven)'}
+        {/* Prices row */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-muted/20 rounded-lg p-2">
+            <div className="text-muted-foreground mb-0.5">Entry Price</div>
+            <div className="font-semibold text-foreground">${formatPrice(trade.entryPrice)}</div>
           </div>
-        )}
-
-        {/* Price Info */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-muted/30 rounded-lg p-2.5">
-            <div className="text-xs text-muted-foreground mb-0.5">Preço de Entrada</div>
-            <div className="text-sm font-semibold text-foreground">${formatPrice(trade.entryPrice)}</div>
-          </div>
-          <div className="bg-muted/30 rounded-lg p-2.5">
-            <div className="text-xs text-muted-foreground mb-0.5">Preço Atual</div>
-            <div className="text-sm font-semibold text-foreground">${formatPrice(trade.currentPrice)}</div>
-          </div>
-          <div className="bg-muted/30 rounded-lg p-2.5">
-            <div className="text-xs text-muted-foreground mb-0.5">Investimento</div>
-            <div className="text-sm font-semibold text-foreground">${trade.investmentAmount}</div>
-          </div>
-          {/* Dynamic SL display */}
-          <div className={`rounded-lg p-2.5 transition-all ${
-            riskManagementStep === 'breakeven'
-              ? 'bg-emerald-500/10 border border-emerald-500/25'
-              : riskManagementStep === 'trailing'
-              ? 'bg-primary/10 border border-primary/25'
-              : reversalAction === 'tighten_sl' && profitProtectionSL
-              ? 'bg-amber-500/10 border border-amber-500/25'
-              : 'bg-muted/30'
-          }`}>
-            <div className={`flex items-center gap-1 text-xs mb-0.5 ${slInfo.className}`}>
-              {slInfo.icon}
-              <span>{slInfo.label}</span>
-            </div>
-            <div className={`text-sm font-semibold ${slInfo.className}`}>
-              ${formatPrice(effectiveSL)}
-            </div>
-            {/* Profit Protection SL display */}
-            {reversalAction === 'tighten_sl' && profitProtectionSL && (
-              <div className="mt-1 pt-1 border-t border-amber-500/20">
-                <div className="text-[10px] text-amber-400/70 flex items-center gap-1">
-                  <ShieldCheck className="w-2.5 h-2.5" />
-                  Profit Protection SL
-                </div>
-                <div className="text-xs font-semibold text-amber-400">
-                  ${formatPrice(profitProtectionSL)}
-                </div>
+          <div className="bg-muted/20 rounded-lg p-2">
+            <div className="text-muted-foreground mb-0.5">Current Price</div>
+            {pnlIsLoading ? (
+              <div className="flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">—</span>
+              </div>
+            ) : (
+              <div className={`font-semibold ${isProfitable ? 'text-emerald-400' : 'text-destructive'}`}>
+                ${formatPrice(trade.currentPrice)}
               </div>
             )}
           </div>
         </div>
 
+        {/* Investment + Leverage info */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-muted/20 rounded-lg p-2">
+            <div className="text-muted-foreground mb-0.5">Investment</div>
+            <div className="font-semibold text-foreground">${trade.investmentAmount.toFixed(0)}</div>
+          </div>
+          <div className="bg-muted/20 rounded-lg p-2">
+            <div className="text-muted-foreground mb-0.5">Notional</div>
+            <div className="font-semibold text-foreground">
+              ${(trade.investmentAmount * trade.leverage).toFixed(0)}
+            </div>
+          </div>
+        </div>
+
         {/* TP Levels */}
         <div className="space-y-1.5">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
-            Níveis de Take Profit
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Target className="w-3 h-3" />
+            Take Profit Levels
           </div>
           <TPLevelRow label="TP1" price={trade.tp1} progress={tp1Progress} executed={tp1Executed} />
           <TPLevelRow label="TP2" price={trade.tp2} progress={tp2Progress} executed={tp2Executed} />
           <TPLevelRow label="TP3" price={trade.tp3} progress={tp3Progress} executed={tp3Executed} />
         </div>
 
+        {/* Stop Loss */}
+        <div className="space-y-1">
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <ShieldAlert className="w-3 h-3" />
+            Stop Loss
+          </div>
+          <div
+            className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${
+              nearSL
+                ? 'bg-destructive/10 border-destructive/30'
+                : 'bg-muted/20 border-border/30'
+            }`}
+          >
+            <div className={`flex items-center gap-1.5 ${slInfo.className}`}>
+              {slInfo.icon}
+              <span className="font-medium">{slInfo.label}</span>
+            </div>
+            <span className={`font-bold ${nearSL ? 'text-destructive' : slInfo.className}`}>
+              ${formatPrice(effectiveSL)}
+            </span>
+          </div>
+
+          {/* Profit Protection SL (if set by reversal detection) */}
+          {profitProtectionSL && profitProtectionSL !== effectiveSL && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/5 text-xs">
+              <div className="flex items-center gap-1.5 text-amber-400">
+                <ShieldCheck className="w-3 h-3" />
+                <span className="font-medium">Profit Protection SL</span>
+              </div>
+              <span className="font-bold text-amber-400">${formatPrice(profitProtectionSL)}</span>
+            </div>
+          )}
+        </div>
+
         {/* Reasoning */}
         {trade.reasoning && (
-          <div className="rounded-lg bg-muted/20 px-3 py-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1">
-              Análise AI
+          <div className="bg-muted/10 border border-border/30 rounded-lg p-2.5">
+            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              AI Reasoning
             </div>
             <p className="text-xs text-muted-foreground/80 leading-relaxed line-clamp-3">
               {trade.reasoning}
@@ -617,9 +642,11 @@ export function AITradeCard({ trade }: AITradeCardProps) {
           </div>
         )}
 
-        {/* ── Per-Modality Live Orders Toggle ── */}
+        {/* Live Orders Toggle */}
         <ModalityLiveToggle modality={trade.modality} />
       </CardContent>
     </Card>
   );
 }
+
+export default AITradeCard;

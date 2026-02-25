@@ -1,20 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AITradeCard } from '@/components/AITradeCard';
-import { AIDailyTradesSummary } from '@/components/AIDailyTradesSummary';
-import { useAITradeGeneration } from '@/hooks/useAITradeGeneration';
-import { useAITradeMonitoring } from '@/hooks/useAITradeMonitoring';
-import { useAITradeStorage } from '@/hooks/useAITradeStorage';
-import { AITrade, AITradeWithPrice } from '@/types/aiTrade';
+import { useAITradeStorage } from '../hooks/useAITradeStorage';
+import { useAITradeGeneration } from '../hooks/useAITradeGeneration';
+import { useAITradeMonitoring } from '../hooks/useAITradeMonitoring';
+import { fetchCurrentPrices } from '../services/binanceApi';
+import { calculatePnl } from '../utils/pnlCalculations';
+import AITradeCard from './AITradeCard';
+import { AIDailyTradesSummary } from './AIDailyTradesSummary';
+import type { AITrade, AITradeWithPrice } from '../types/aiTrade';
 
-function toTradeWithPrice(t: AITrade): AITradeWithPrice {
+function toTradeWithPrice(t: AITrade, priceMap: Record<string, number>): AITradeWithPrice {
   const a = t as any;
+
+  // Prefer freshly-fetched price from priceMap, then runtime-attached price, then 0
+  const livePrice = priceMap[t.symbol];
+  const runtimePrice: number = a.currentPrice ?? 0;
+  const currentPrice = (livePrice && livePrice > 0) ? livePrice : runtimePrice;
+
+  // Only compute PnL when we have a real live price
+  let pnlUsd: number | null = null;
+  let pnlPercent: number | null = null;
+
+  if (currentPrice > 0) {
+    const calc = calculatePnl(
+      t.entryPrice,
+      currentPrice,
+      t.investmentAmount,
+      t.leverage,
+      t.positionType
+    );
+    pnlUsd = calc.pnlUsd;
+    pnlPercent = calc.pnlPercent;
+  }
+
+  // Safely cast reversalAction to the required union type
+  const rawAction = a.reversalAction ?? t.reversalAction;
+  const validActions = ['close', 'reverse', 'tighten_sl', 'none'] as const;
+  const reversalAction: AITradeWithPrice['reversalAction'] =
+    validActions.includes(rawAction) ? rawAction : 'none';
+
   return {
     ...t,
-    currentPrice: a.currentPrice ?? t.entryPrice,
-    pnlUsd: a.pnlUsd ?? 0,
-    pnlPercent: a.pnlPercent ?? 0,
+    currentPrice,
+    // Use null-coalesced values — keep 0 only when we have a valid price that yields 0 PnL
+    pnlUsd: pnlUsd ?? 0,
+    pnlPercent: pnlPercent ?? 0,
     tp1Executed: a.tp1Executed ?? false,
     tp2Executed: a.tp2Executed ?? false,
     tp3Executed: a.tp3Executed ?? false,
@@ -23,51 +54,140 @@ function toTradeWithPrice(t: AITrade): AITradeWithPrice {
     reversalDetected: a.reversalDetected ?? false,
     reversalConfidence: a.reversalConfidence ?? 0,
     reversalReason: a.reversalReason ?? '',
-    reversalAction: a.reversalAction ?? 'none',
+    reversalAction,
   };
 }
 
 export function AIDailyTradesSection() {
-  const {
-    data: trades,
-    isLoading,
-    isFetching,
-    refetch,
-  } = useAITradeGeneration();
-
   const { getTrades } = useAITradeStorage();
+  const { isFetching, refetch } = useAITradeGeneration();
 
+  // Start the monitoring loop (updates localStorage + dispatches events)
+  useAITradeMonitoring();
+
+  // priceMap holds the latest fetched prices per symbol
+  const priceMapRef = useRef<Record<string, number>>({});
+  const [priceMap, setPriceMap] = useState<Record<string, number>>({});
+  const [pricesLoading, setPricesLoading] = useState(true);
   const [tradesWithPrices, setTradesWithPrices] = useState<AITradeWithPrice[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const isFetchingPricesRef = useRef(false);
 
-  // Run monitoring hook (updates localStorage and dispatches events)
-  useAITradeMonitoring(trades);
+  // Rebuild tradesWithPrices from storage + given priceMap
+  const rebuildTrades = useCallback(
+    (currentPriceMap: Record<string, number>) => {
+      const raw = getTrades();
+      const enriched = raw.map((t) => toTradeWithPrice(t, currentPriceMap));
+      setTradesWithPrices(enriched);
+    },
+    [getTrades]
+  );
 
-  // Listen for trade updates from monitoring
+  // Fetch live prices for all active trades using bulk endpoint
+  const fetchPrices = useCallback(async () => {
+    if (isFetchingPricesRef.current) return;
+    isFetchingPricesRef.current = true;
+
+    try {
+      const trades = getTrades();
+      if (!trades || trades.length === 0) {
+        setPricesLoading(false);
+        return;
+      }
+
+      const symbols = [...new Set(trades.map((t) => t.symbol))];
+
+      try {
+        // Use bulk fetch for efficiency
+        const priceList = await fetchCurrentPrices(symbols);
+        const newPriceMap: Record<string, number> = { ...priceMapRef.current };
+
+        for (const item of priceList) {
+          const price = parseFloat(item.price);
+          if (isFinite(price) && price > 0) {
+            newPriceMap[item.symbol] = price;
+          }
+        }
+
+        priceMapRef.current = newPriceMap;
+
+        // Rebuild trades with the new prices BEFORE updating state
+        // This ensures pricesLoading=false is set only after trades are enriched
+        const raw = getTrades();
+        const enriched = raw.map((t) => toTradeWithPrice(t, newPriceMap));
+        setTradesWithPrices(enriched);
+        setPriceMap(newPriceMap);
+        setLastUpdated(new Date());
+      } catch {
+        // On error, try individual fetches as fallback
+        const newPriceMap: Record<string, number> = { ...priceMapRef.current };
+        await Promise.allSettled(
+          symbols.map(async (symbol) => {
+            try {
+              const res = await fetch(
+                `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`
+              );
+              if (res.ok) {
+                const data = await res.json();
+                const price = parseFloat(data.price);
+                if (isFinite(price) && price > 0) {
+                  newPriceMap[symbol] = price;
+                }
+              }
+            } catch {
+              // keep existing price
+            }
+          })
+        );
+
+        priceMapRef.current = newPriceMap;
+        const raw = getTrades();
+        const enriched = raw.map((t) => toTradeWithPrice(t, newPriceMap));
+        setTradesWithPrices(enriched);
+        setPriceMap(newPriceMap);
+        setLastUpdated(new Date());
+      }
+    } finally {
+      setPricesLoading(false);
+      isFetchingPricesRef.current = false;
+    }
+  }, [getTrades]);
+
+  // Initial load — show trades immediately from storage, then fetch prices
+  useEffect(() => {
+    rebuildTrades({});
+    fetchPrices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Poll prices every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchPrices, 5000);
+    return () => clearInterval(interval);
+  }, [fetchPrices]);
+
+  // Listen for trade changes (TP/SL hits, new generation, monitoring updates)
   useEffect(() => {
     const handleTradesChanged = () => {
-      const updated = getTrades();
-      setTradesWithPrices(updated.map(toTradeWithPrice));
-      setLastUpdated(new Date());
+      // Rebuild with current priceMap first, then re-fetch prices
+      rebuildTrades(priceMapRef.current);
+      fetchPrices();
     };
 
     window.addEventListener('ai-trades-changed', handleTradesChanged);
-    return () => window.removeEventListener('ai-trades-changed', handleTradesChanged);
-  }, [getTrades]);
+    window.addEventListener('ai-trades-price-update', handleTradesChanged);
 
-  // Initialize tradesWithPrices when trades first load
-  useEffect(() => {
-    if (trades && trades.length > 0) {
-      setTradesWithPrices(trades.map(toTradeWithPrice));
-      setLastUpdated(new Date());
-    }
-  }, [trades]);
+    return () => {
+      window.removeEventListener('ai-trades-changed', handleTradesChanged);
+      window.removeEventListener('ai-trades-price-update', handleTradesChanged);
+    };
+  }, [rebuildTrades, fetchPrices]);
 
   const handleRefresh = () => {
     refetch();
   };
 
-  if (isLoading) {
+  if (isFetching && tradesWithPrices.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -77,11 +197,8 @@ export function AIDailyTradesSection() {
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <div
-              key={i}
-              className="h-64 rounded-lg bg-muted/30 animate-pulse"
-            />
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-64 rounded-lg bg-muted/30 animate-pulse" />
           ))}
         </div>
       </div>
@@ -111,6 +228,7 @@ export function AIDailyTradesSection() {
         <AIDailyTradesSummary
           trades={tradesWithPrices}
           lastUpdated={lastUpdated}
+          pricesLoading={pricesLoading}
         />
       )}
 
@@ -122,9 +240,22 @@ export function AIDailyTradesSection() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {tradesWithPrices.map(trade => (
-            <AITradeCard key={trade.id} trade={trade} />
-          ))}
+          {tradesWithPrices.map((trade) => {
+            // A trade's price is loading if: global prices are still loading AND
+            // we don't have a valid price for this symbol yet
+            const symbolHasPrice =
+              priceMapRef.current[trade.symbol] != null &&
+              priceMapRef.current[trade.symbol] > 0;
+            const tradepriceLoading = pricesLoading && !symbolHasPrice;
+
+            return (
+              <AITradeCard
+                key={trade.id}
+                trade={trade}
+                priceLoading={tradepriceLoading}
+              />
+            );
+          })}
         </div>
       )}
     </div>

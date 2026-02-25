@@ -1,64 +1,48 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T04:24:13.223Z",
+  "generatedAt": "2026-02-25T08:35:58.726Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 4,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-118",
-        "summary": "Audit and fix the TP/SL order execution logic in useAITradeMonitoring.ts so that when a live AI trade's price crosses TP1, TP2, TP3, or the effective stop-loss, the corresponding real Binance order actions are triggered. Specifically: (1) When TP1 is crossed and tp1Executed is false — mark tp1Executed = true, cancel the original STOP_MARKET order via cancelOrder(), place a new STOP_MARKET at the entry price (breakeven), and persist the updated effectiveSL and riskManagementStep ('breakeven') to localStorage under 'ai_daily_trades'. (2) When TP2 is crossed and tp2Executed is false — mark tp2Executed = true, cancel the current STOP_MARKET order, place a new STOP_MARKET at the TP1 price (trailing), and persist effectiveSL and riskManagementStep ('trailing'). (3) When TP3 is crossed and tp3Executed is false — mark tp3Executed = true, place a MARKET close order for the full position quantity on the opposite side, record the closed trade in AI trade history with full TP3 profit, set status to 'TP Hit', and trigger auto-regeneration for that modality. (4) When the effective SL is crossed — place a MARKET close order on the opposite side, record the trade as 'SL Hit' in history, and trigger auto-regeneration. All Binance order calls must use binanceOrderService.ts and only fire when BOTH isLiveTradingEnabled() returns true AND getModalityLiveOrders()[trade.modality] is true. Each call must be individually wrapped in try/catch with a 10-second Promise.race timeout. If an order call fails, log the error, show a toast (e.g., 'TP1 order update failed — SL not moved to breakeven'), and continue updating the local trade state regardless.",
+        "id": "REQ-133",
+        "summary": "Fix the AI Daily Trades P&L calculation in AIDailyTradesSection.tsx so that the live current price fetched from https://fapi.binance.com/fapi/v1/ticker/price is reliably obtained before any PnL calculation runs. Audit the polling mechanism inside AIDailyTradesSection: ensure the price fetch completes and returns a non-zero, non-undefined value before buildng the enriched trade objects passed to AITradeCard. If the price is still loading (0 or undefined), pass a loading flag to AITradeCard instead of a zero price so PnL is not computed with an invalid baseline.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useAITradeMonitoring.ts",
-          "frontend/src/services/binanceOrderService.ts"
+          "frontend/src/components/AIDailyTradesSection.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useAITradeMonitoring.ts",
-          "frontend/src/services/binanceOrderService.ts"
+          "frontend/src/components/AIDailyTradesSection.tsx"
         ]
       },
       {
-        "id": "REQ-119",
-        "summary": "Implement Accept and Reject functionality for AI take-profit recommendation suggestions displayed in the 'AI Insights' tab (AIInsightsTab.tsx) via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on a TP adjustment suggestion for a monitored position: (1) If live trading mode is ON and credentials are present, call placeTakeProfitMarketOrder() from binanceOrderService.ts with the suggested TP price and the appropriate position quantity and side, wrapped in try/catch with a 10-second timeout; show a toast 'TP order placed on Binance: {price}' on success or 'TP order failed: {error}' on failure. (2) Regardless of live trading mode, update the position's stored TP level(s) in localStorage (under the 'positions' key) with the newly accepted TP price, so the PositionCard and PositionDashboard reflect the updated target immediately. (3) Record the accepted suggestion in the adjustment history stored in localStorage (using the existing AdjustmentHistoryRecord type from frontend/src/types/adjustment.ts) with outcome 'accepted'. When the user clicks 'Reject' on a TP adjustment suggestion: (1) Do not place any order. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'. The accept/reject callbacks must be wired from AIInsightsTab.tsx down to AdjustmentSuggestionCard.tsx via props, using the existing onAccept and onDismiss prop signatures already defined on the component.",
+        "id": "REQ-134",
+        "summary": "Fix AITradeCard.tsx so that it guards against a zero or undefined currentPrice before calling the PnL calculation. Inside the card, check that currentPrice is a finite number greater than zero before invoking calculatePnl (or the equivalent function from pnlCalculations.ts). When currentPrice is not yet available, display a loading indicator (e.g., a spinner or '…') in the PnL display area. When currentPrice is valid, display the computed PnL in USD and percentage with correct color coding (green for profit, red for loss).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/AIInsightsTab.tsx",
-          "frontend/src/hooks/usePositionStorage.ts"
+          "frontend/src/components/AITradeCard.tsx",
+          "frontend/src/components/AIDailyTradesSummary.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/AIInsightsTab.tsx",
-          "frontend/src/hooks/usePositionStorage.ts"
+          "frontend/src/components/AITradeCard.tsx",
+          "frontend/src/components/AIDailyTradesSummary.tsx"
         ]
       },
       {
-        "id": "REQ-120",
-        "summary": "Implement Accept and Reject functionality for AI stop-loss adjustment suggestions displayed in the 'AI Insights' tab via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on an SL adjustment suggestion: (1) If live trading mode is ON and credentials are present, cancel the existing STOP_MARKET order for the position (using the stored Binance order ID if available, otherwise call getOpenOrders() to locate it) and place a new STOP_MARKET order at the suggested SL price with the appropriate quantity and side, both calls wrapped in try/catch with a 10-second timeout each; show toasts for success/failure of each step individually. (2) Regardless of live trading mode, update the position's stored stopLoss price in localStorage (under the 'positions' key) with the newly accepted SL price immediately. (3) Record the accepted suggestion in adjustment history with outcome 'accepted'. When the user clicks 'Reject' on an SL adjustment suggestion: (1) Do not place or cancel any orders. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'.",
-        "status": "implemented",
+        "id": "REQ-135",
+        "summary": "Fix the duplicate 'Day Trading' modality card in the AI Daily Trades tab. Audit useAITradeGeneration.ts and useAITradeStorage.ts to ensure that exactly four unique modality trades are stored and rendered — one each for 'Scalping', 'Day Trading', 'Swing Trading', and 'Trend Following'. Detect and remove any duplicate entries with the same modality in the stored 'ai_daily_trades' localStorage array. Add a deduplication guard in the storage write path so that if a trade for a modality already exists with status 'Open', no second trade for that same modality is inserted.",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/components/AIInsightsTab.tsx"
+          "frontend/src/hooks/useAITradeStorage.ts",
+          "frontend/src/hooks/useAITradeGeneration.ts"
         ],
-        "matchedFiles": [
-          "frontend/src/components/AIInsightsTab.tsx"
-        ]
-      },
-      {
-        "id": "REQ-121",
-        "summary": "Ensure the AdjustmentSuggestionCard component (frontend/src/components/AdjustmentSuggestionCard.tsx) and its rendering inside AIInsightsTab.tsx (frontend/src/components/AIInsightsTab.tsx) correctly wire the onAccept and onDismiss callbacks. Audit the current implementation: (1) Verify that AIInsightsTab.tsx passes functional onAccept and onDismiss handler props to each AdjustmentSuggestionCard — these must not be undefined, no-ops, or missing. (2) Ensure the 'Accept' and 'Reject'/'Dismiss' buttons inside AdjustmentSuggestionCard call these props when clicked, with the suggestion object passed as the argument. (3) If the component currently uses a local dismiss-only state without calling onAccept, refactor it so that the parent (AIInsightsTab) controls the accepted/dismissed state via the callbacks and removes the suggestion from its rendered list on both accept and dismiss. (4) The suggestion cards must disappear from the UI immediately after accept or reject is clicked, with no stale card lingering.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AdjustmentSuggestionCard.tsx",
-          "frontend/src/components/AIInsightsTab.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AdjustmentSuggestionCard.tsx",
-          "frontend/src/components/AIInsightsTab.tsx"
-        ]
+        "matchedFiles": []
       }
     ]
   },
@@ -67,17 +51,9 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
     "frontend/src/components/AIDailyTradesSection.tsx",
-    "frontend/src/components/AIInsightsTab.tsx",
-    "frontend/src/components/AdjustmentSuggestionCard.tsx",
-    "frontend/src/components/PositionCard.tsx",
-    "frontend/src/hooks/useAITradeGeneration.ts",
-    "frontend/src/hooks/useAITradeMonitoring.ts",
-    "frontend/src/hooks/useAITradeStorage.ts",
-    "frontend/src/hooks/usePositionStorage.ts",
-    "frontend/src/services/binanceOrderService.ts",
-    "frontend/src/utils/aiTradeHistoryStorage.ts",
+    "frontend/src/components/AIDailyTradesSummary.tsx",
+    "frontend/src/components/AITradeCard.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

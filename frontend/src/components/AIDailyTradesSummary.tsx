@@ -1,40 +1,47 @@
 import React, { useMemo } from 'react';
 import { AITradeWithPrice } from '../types/aiTrade';
-import { TrendingUp, TrendingDown, Activity, ShieldCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, ShieldCheck, Loader2 } from 'lucide-react';
 import { getAITradeHistory } from '../utils/aiTradeHistoryStorage';
 
 interface AIDailyTradesSummaryProps {
   trades: AITradeWithPrice[];
   lastUpdated: Date | null;
+  pricesLoading?: boolean;
 }
 
 function getCurrentUTCDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-export function AIDailyTradesSummary({ trades, lastUpdated }: AIDailyTradesSummaryProps) {
-  const totalPnlUsd = trades.reduce((sum, t) => sum + t.pnlUsd, 0);
-  const totalInvestment = trades.reduce((sum, t) => sum + t.investmentAmount, 0);
+export function AIDailyTradesSummary({ trades, lastUpdated, pricesLoading = false }: AIDailyTradesSummaryProps) {
+  // Only include trades that have a valid loaded price for PnL aggregation
+  const tradesWithValidPrice = trades.filter(
+    (t) => isFinite(t.currentPrice) && t.currentPrice > 0
+  );
+
+  const totalPnlUsd = tradesWithValidPrice.reduce((sum, t) => sum + t.pnlUsd, 0);
+  const totalInvestment = tradesWithValidPrice.reduce((sum, t) => sum + t.investmentAmount, 0);
   const totalPnlPercent = totalInvestment > 0 ? (totalPnlUsd / totalInvestment) * 100 : 0;
-  const winningTrades = trades.filter((t) => t.pnlUsd >= 0).length;
-  const losingTrades = trades.filter((t) => t.pnlUsd < 0).length;
+  const winningTrades = tradesWithValidPrice.filter((t) => t.pnlUsd >= 0).length;
+  const losingTrades = tradesWithValidPrice.filter((t) => t.pnlUsd < 0).length;
   const isPositive = totalPnlUsd >= 0;
+
+  // Are all trades still loading prices?
+  const allPricesLoading = pricesLoading && tradesWithValidPrice.length === 0 && trades.length > 0;
 
   // Count reversal guard activations today
   const reversalGuardCount = useMemo(() => {
     const today = getCurrentUTCDate();
     const history = getAITradeHistory();
     return history.filter((record) => {
-      // Check if the record is from today
       const recordDate = new Date(record.timestamp).toISOString().split('T')[0];
       if (recordDate !== today) return false;
-      // Check if it was closed by reversal detection
       return (
         record.outcomeNote?.includes('Closed by reversal detection') ||
         record.outcomeNote?.includes('direction reversed')
       );
     }).length;
-  }, [lastUpdated]); // Recompute when lastUpdated changes (i.e., on each polling cycle)
+  }, [lastUpdated]);
 
   const formattedTime = lastUpdated
     ? lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
@@ -54,23 +61,30 @@ export function AIDailyTradesSummary({ trades, lastUpdated }: AIDailyTradesSumma
               AI Portfolio PnL Today
             </span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span
-              className={`text-3xl font-bold ${isPositive ? 'text-emerald-400' : 'text-destructive'}`}
-            >
-              {isPositive ? '+' : ''}
-              {totalPnlUsd.toFixed(2)} USDT
-            </span>
-            <div
-              className={`flex items-center gap-1 text-sm font-medium ${
-                isPositive ? 'text-emerald-400' : 'text-destructive'
-              }`}
-            >
-              {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              {isPositive ? '+' : ''}
-              {totalPnlPercent.toFixed(2)}%
+          {allPricesLoading ? (
+            <div className="flex items-center gap-2 h-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <span className="text-muted-foreground text-sm">Carregando preços...</span>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <span
+                className={`text-3xl font-bold ${isPositive ? 'text-emerald-400' : 'text-destructive'}`}
+              >
+                {isPositive ? '+' : ''}
+                {totalPnlUsd.toFixed(2)} USDT
+              </span>
+              <div
+                className={`flex items-center gap-1 text-sm font-medium ${
+                  isPositive ? 'text-emerald-400' : 'text-destructive'
+                }`}
+              >
+                {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                {isPositive ? '+' : ''}
+                {totalPnlPercent.toFixed(2)}%
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Stats */}
