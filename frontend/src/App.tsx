@@ -94,6 +94,7 @@ export default function App() {
               const pos = positionsWithPrice.find((p) => p.id === id);
               if (pos) updatePosition({ ...pos, ...updates } as typeof pos);
             }}
+            onTabChange={setActiveTab}
           />
         )}
         {activeTab === 'risk-management' && (

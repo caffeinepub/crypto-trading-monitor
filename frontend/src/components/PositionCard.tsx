@@ -13,6 +13,7 @@ import { SentimentGauge } from './SentimentGauge';
 import { TrendPredictionCard } from './TrendPredictionCard';
 import { AdjustmentSuggestionCard } from './AdjustmentSuggestionCard';
 import { TradeOutcomeModal } from './TradeOutcomeModal';
+import { PositionRecoveryCard } from './PositionRecoveryCard';
 import { useAdjustmentSuggestions } from '../hooks/useAdjustmentSuggestions';
 import { saveUserTrade } from '../utils/tradeHistoryStorage';
 
@@ -242,6 +243,9 @@ export function PositionCard({ position, onDelete, onUpdate }: PositionCardProps
                 positionType={position.positionType}
               />
             </div>
+
+            {/* Position Recovery Card — only visible when position is in loss */}
+            <PositionRecoveryCard position={position} />
           </CardContent>
         </div>
       </Card>

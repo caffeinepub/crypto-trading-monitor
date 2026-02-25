@@ -1,34 +1,63 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T22:33:24.502Z",
+  "generatedAt": "2026-02-25T03:37:20.020Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 4,
+    "implemented": 0,
     "items": [
       {
-        "id": "REQ-94",
-        "summary": "Update the asset selection input in the PositionSizeCalculator component (frontend/src/components/PositionSizeCalculator.tsx) to populate its dropdown/autocomplete with the full list of Binance USD-M Futures perpetual pairs fetched via the existing useBinancePairs hook (frontend/src/hooks/useBinancePairs.ts), which calls https://fapi.binance.com/fapi/v1/exchangeInfo and filters for contractType === 'PERPETUAL'. The selector must expose all perpetual pairs returned by that endpoint — not a hardcoded or pre-filtered subset. Display a loading state while pairs are being fetched and an error message if the fetch fails. The selected symbol must drive the live price fetch (https://fapi.binance.com/fapi/v1/ticker/price?symbol=SYMBOL) and leverage bracket fetch (https://fapi.binance.com/fapi/v1/leverageBracket?symbol=SYMBOL) already implemented in the component.",
-        "status": "implemented",
+        "id": "REQ-109",
+        "summary": "Audit and fix the TP/SL order execution logic in useAITradeMonitoring.ts so that when a live AI trade's price crosses TP1, TP2, TP3, or the effective stop-loss, the corresponding real Binance order actions are triggered. Specifically: (1) When TP1 is crossed and tp1Executed is false — mark tp1Executed = true, cancel the original STOP_MARKET order via cancelOrder(), place a new STOP_MARKET at the entry price (breakeven), and persist the updated effectiveSL and riskManagementStep ('breakeven') to localStorage under 'ai_daily_trades'. (2) When TP2 is crossed and tp2Executed is false — mark tp2Executed = true, cancel the current STOP_MARKET order, place a new STOP_MARKET at the TP1 price (trailing), and persist effectiveSL and riskManagementStep ('trailing'). (3) When TP3 is crossed and tp3Executed is false — mark tp3Executed = true, place a MARKET close order for the full position quantity on the opposite side, record the closed trade in AI trade history with full TP3 profit, set status to 'TP Hit', and trigger auto-regeneration for that modality. (4) When the effective SL is crossed — place a MARKET close order on the opposite side, record the trade as 'SL Hit' in history, and trigger auto-regeneration. All Binance order calls must use binanceOrderService.ts and only fire when BOTH isLiveTradingEnabled() returns true AND getModalityLiveOrders()[trade.modality] is true. Each call must be individually wrapped in try/catch with a 10-second Promise.race timeout. If an order call fails, log the error, show a toast (e.g., 'TP1 order update failed — SL not moved to breakeven'), and continue updating the local trade state regardless.",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/components/PositionSizeCalculator.tsx"
+          "frontend/src/hooks/useAITradeMonitoring.ts",
+          "frontend/src/services/binanceOrderService.ts",
+          "frontend/src/utils/aiTradeHistoryStorage.ts"
         ],
-        "matchedFiles": [
-          "frontend/src/components/PositionSizeCalculator.tsx"
-        ]
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-110",
+        "summary": "Implement Accept and Reject functionality for AI take-profit recommendation suggestions displayed in the 'AI Insights' tab (AIInsightsTab.tsx) via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on a TP adjustment suggestion for a monitored position: (1) If live trading mode is ON and credentials are present, call placeTakeProfitMarketOrder() from binanceOrderService.ts with the suggested TP price and the appropriate position quantity and side, wrapped in try/catch with a 10-second timeout; show a toast 'TP order placed on Binance: {price}' on success or 'TP order failed: {error}' on failure. (2) Regardless of live trading mode, update the position's stored TP level(s) in localStorage (under the 'positions' key) with the newly accepted TP price, so the PositionCard and PositionDashboard reflect the updated target immediately. (3) Record the accepted suggestion in the adjustment history stored in localStorage (using the existing AdjustmentHistoryRecord type from frontend/src/types/adjustment.ts) with outcome 'accepted'. When the user clicks 'Reject' on a TP adjustment suggestion: (1) Do not place any order. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'. The accept/reject callbacks must be wired from AIInsightsTab.tsx down to AdjustmentSuggestionCard.tsx via props, using the existing onAccept and onDismiss prop signatures already defined on the component.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/AIInsightsTab.tsx",
+          "frontend/src/services/binanceOrderService.ts",
+          "frontend/src/utils/adjustmentHistoryStorage.ts"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-111",
+        "summary": "Implement Accept and Reject functionality for AI stop-loss adjustment suggestions displayed in the 'AI Insights' tab via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on an SL adjustment suggestion: (1) If live trading mode is ON and credentials are present, cancel the existing STOP_MARKET order for the position (using the stored Binance order ID if available, otherwise call getOpenOrders() to locate it) and place a new STOP_MARKET order at the suggested SL price with the appropriate quantity and side, both calls wrapped in try/catch with a 10-second timeout each; show toasts for success/failure of each step individually. (2) Regardless of live trading mode, update the position's stored stopLoss price in localStorage (under the 'positions' key) with the newly accepted SL price immediately. (3) Record the accepted suggestion in adjustment history with outcome 'accepted'. When the user clicks 'Reject' on an SL adjustment suggestion: (1) Do not place or cancel any orders. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'. The accept/reject callbacks must be correctly wired from AIInsightsTab.tsx down to AdjustmentSuggestionCard.tsx via the existing onAccept and onDismiss prop signatures.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/AIInsightsTab.tsx",
+          "frontend/src/services/binanceOrderService.ts"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-112",
+        "summary": "Ensure the AdjustmentSuggestionCard component (frontend/src/components/AdjustmentSuggestionCard.tsx) and its rendering inside AIInsightsTab.tsx (frontend/src/components/AIInsightsTab.tsx) correctly wire the onAccept and onDismiss callbacks. Audit the current implementation: (1) Verify that AIInsightsTab.tsx passes functional onAccept and onDismiss handler props to each AdjustmentSuggestionCard — these must not be undefined, no-ops, or missing. (2) Ensure the 'Accept' and 'Reject' (or 'Dismiss') buttons inside AdjustmentSuggestionCard call these props when clicked, with the suggestion object passed as the argument. (3) If the component currently uses a local dismiss-only state without calling onAccept, refactor it so that the parent (AIInsightsTab) controls the accepted/dismissed state via the callbacks and removes the suggestion from its rendered list on both accept and dismiss. (4) The suggestion cards must disappear from the UI immediately after accept or reject is clicked, with no stale card lingering.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/AdjustmentSuggestionCard.tsx",
+          "frontend/src/components/AIInsightsTab.tsx"
+        ],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
     "build-request.json",
     "feature_evidence.json",
-    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/PositionSizeCalculator.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

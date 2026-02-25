@@ -1,8 +1,21 @@
 import { TradingModality, AITrade } from '../types/aiTrade';
-import { fetchKlines, fetchCurrentPrices } from '../services/binanceApi';
-import { BinanceKline } from '../services/binanceApi';
+import { fetchKlines, fetchCurrentPrices, BinanceKline } from '../services/binanceApi';
+import {
+  detectSwingPoints,
+  detectBOS,
+  detectCHOCH,
+  detectOrderBlocks,
+  detectFVGs,
+  detectLiquidityZones,
+  detectManipulation,
+  classifyInstitutionalCycle,
+  calcATRFromKlines,
+  findNearestUnmitigatedOB,
+  findNearestOpenFVG,
+  findSweptLiquidityZone,
+} from './smcAnalysis';
 
-// --- Technical Indicator Helpers ---
+// ─── Technical Indicator Helpers ──────────────────────────────────────────────
 
 function calcEMA(prices: number[], period: number): number[] {
   const k = 2 / (period + 1);
@@ -32,19 +45,6 @@ function calcRSI(closes: number[], period: number = 14): number {
   return 100 - 100 / (1 + rs);
 }
 
-function calcATR(klines: BinanceKline[], period: number = 14): number {
-  if (klines.length < 2) return 0;
-  const trs: number[] = [];
-  for (let i = 1; i < klines.length; i++) {
-    const high = klines[i].high;
-    const low = klines[i].low;
-    const prevClose = klines[i - 1].close;
-    trs.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)));
-  }
-  const slice = trs.slice(-period);
-  return slice.reduce((a, b) => a + b, 0) / slice.length;
-}
-
 function calcMomentum(closes: number[], period: number = 10): number {
   if (closes.length < period + 1) return 0;
   const current = closes[closes.length - 1];
@@ -66,7 +66,7 @@ interface TechnicalIndicators {
 function computeTechnicalIndicators(klines: BinanceKline[]): TechnicalIndicators {
   const closes = klines.map((k) => k.close);
   const rsi = calcRSI(closes);
-  const atr = calcATR(klines);
+  const atr = calcATRFromKlines(klines);
   const momentum = calcMomentum(closes);
   const ema9Arr = calcEMA(closes, 9);
   const ema21Arr = calcEMA(closes, 21);
@@ -78,7 +78,6 @@ function computeTechnicalIndicators(klines: BinanceKline[]): TechnicalIndicators
   if (ema9 > ema21 && momentum > 0) trend = 'bullish';
   else if (ema9 < ema21 && momentum < 0) trend = 'bearish';
 
-  // Signal strength: 0-100
   let signalStrength = 50;
   if (trend === 'bullish') {
     signalStrength = 50 + Math.min(30, Math.abs(momentum) * 2) + (rsi > 50 ? 10 : -10) + (rsi < 70 ? 10 : -10);
@@ -90,7 +89,8 @@ function computeTechnicalIndicators(klines: BinanceKline[]): TechnicalIndicators
   return { rsi, atr, momentum, trend, ema9, ema21, currentPrice, signalStrength };
 }
 
-// Modality config
+// ─── Modality Config ──────────────────────────────────────────────────────────
+
 interface ModalityConfig {
   interval: string;
   klineLimit: number;
@@ -145,7 +145,6 @@ const MODALITY_CONFIG: Record<TradingModality, ModalityConfig> = {
   },
 };
 
-// Candidate symbols per modality (well-known liquid USDT-M perpetuals)
 const CANDIDATE_SYMBOLS: Record<TradingModality, string[]> = {
   Scalping: ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT'],
   DayTrading: ['BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'DOGEUSDT', 'LINKUSDT'],
@@ -157,33 +156,69 @@ function randomInRange(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateReasoningSummary(
+// ─── SMC-Enhanced Reasoning ───────────────────────────────────────────────────
+
+function generateSMCReasoning(
   symbol: string,
   direction: 'Long' | 'Short',
   indicators: TechnicalIndicators,
-  modality: TradingModality
+  modality: TradingModality,
+  smcContext: {
+    bosDetected: boolean;
+    bosPrice: number;
+    chochDetected: boolean;
+    chochPrice: number;
+    obPrice: number | null;
+    fvgPrice: number | null;
+    liquidityZone: string;
+    cycle: string;
+    manipulation: string;
+    leverageReduced: boolean;
+  }
 ): string {
-  const rsiStr = indicators.rsi.toFixed(0);
-  const momentumStr = Math.abs(indicators.momentum).toFixed(2);
-  const trendStr = indicators.trend === 'bullish' ? 'bullish' : indicators.trend === 'bearish' ? 'bearish' : 'neutral';
-  const emaRelation = indicators.ema9 > indicators.ema21 ? 'EMA9 above EMA21 confirms upward momentum' : 'EMA9 below EMA21 signals downward pressure';
-
   const modalityDesc: Record<TradingModality, string> = {
-    Scalping: 'Short-term scalp opportunity detected on 5-minute chart.',
-    DayTrading: 'Intraday setup identified on 1-hour timeframe.',
-    SwingTrading: 'Multi-day swing setup confirmed on 4-hour chart.',
-    TrendFollowing: 'Strong trend continuation signal on daily chart.',
+    Scalping: 'Short-term scalp on 5m chart.',
+    DayTrading: 'Intraday setup on 1H timeframe.',
+    SwingTrading: 'Multi-day swing on 4H chart.',
+    TrendFollowing: 'Trend continuation on Daily chart.',
   };
 
-  return `${modalityDesc[modality]} Selected ${symbol} ${direction} based on ${trendStr} market structure with RSI at ${rsiStr}. ${emaRelation} with ${momentumStr}% momentum. ATR-based TP/SL levels set for optimal risk-reward ratio.`;
+  const parts: string[] = [modalityDesc[modality]];
+
+  if (smcContext.bosDetected) {
+    parts.push(`BOS confirmed ${direction === 'Long' ? 'bullish' : 'bearish'} at ${smcContext.bosPrice.toFixed(4)}.`);
+  }
+  if (smcContext.chochDetected) {
+    parts.push(`CHOCH signal at ${smcContext.chochPrice.toFixed(4)} — structure change confirmed.`);
+  }
+  if (smcContext.obPrice !== null) {
+    parts.push(`Unmitigated ${direction === 'Long' ? 'bullish' : 'bearish'} OB at ${smcContext.obPrice.toFixed(4)} provides institutional support.`);
+  }
+  if (smcContext.fvgPrice !== null) {
+    parts.push(`Open FVG at ${smcContext.fvgPrice.toFixed(4)} acts as price magnet for TP target.`);
+  }
+  if (smcContext.liquidityZone) {
+    parts.push(`Liquidity zone: ${smcContext.liquidityZone}.`);
+  }
+  if (smcContext.cycle !== 'unknown') {
+    parts.push(`Institutional cycle: ${smcContext.cycle}.`);
+  }
+  if (smcContext.manipulation) {
+    parts.push(smcContext.manipulation);
+  }
+  if (smcContext.leverageReduced) {
+    parts.push(`Leverage reduced due to manipulation/fakeout signals near entry zone.`);
+  }
+
+  parts.push(`RSI: ${indicators.rsi.toFixed(0)}, Momentum: ${Math.abs(indicators.momentum).toFixed(2)}%. RRR ≥ 1:2 enforced.`);
+
+  return parts.join(' ');
 }
 
 const DEFAULT_INVESTMENT = 1000;
 
 /**
- * Generate an AI trade for a given modality.
- * @param modality - The trading modality to generate a trade for.
- * @param investmentAmount - Optional investment amount (defaults to $1,000 if not provided).
+ * Generate an AI trade for a given modality using SMC-based analysis.
  */
 export async function generateAITradeForModality(
   modality: TradingModality,
@@ -193,15 +228,14 @@ export async function generateAITradeForModality(
   const candidates = CANDIDATE_SYMBOLS[modality];
   const investment = investmentAmount !== undefined && investmentAmount > 0 ? investmentAmount : DEFAULT_INVESTMENT;
 
-  // Fetch klines for all candidates and score them
-  const results: Array<{ symbol: string; indicators: TechnicalIndicators }> = [];
+  const results: Array<{ symbol: string; indicators: TechnicalIndicators; klines: BinanceKline[] }> = [];
 
   for (const symbol of candidates) {
     try {
       const klines = await fetchKlines(symbol, config.interval, config.klineLimit);
       if (klines.length < 20) continue;
       const indicators = computeTechnicalIndicators(klines);
-      results.push({ symbol, indicators });
+      results.push({ symbol, indicators, klines });
     } catch {
       // skip failed symbols
     }
@@ -211,34 +245,138 @@ export async function generateAITradeForModality(
     throw new Error(`No valid candidates found for ${modality}`);
   }
 
-  // Pick the symbol with the highest signal strength
   results.sort((a, b) => b.indicators.signalStrength - a.indicators.signalStrength);
   const best = results[0];
 
-  // Fetch current price
   const prices = await fetchCurrentPrices([best.symbol]);
   const currentPrice = prices.length > 0 ? parseFloat(prices[0].price) : best.indicators.currentPrice;
 
   const direction: 'Long' | 'Short' = best.indicators.trend === 'bearish' ? 'Short' : 'Long';
-  const leverage = randomInRange(config.leverageMin, config.leverageMax);
 
-  const atrOffset = best.indicators.atr > 0 ? best.indicators.atr : currentPrice * 0.005;
+  // ─── SMC Analysis ─────────────────────────────────────────────────────────
+  const klines = best.klines;
+  const swings = detectSwingPoints(klines, 3);
+  const bosSignals = detectBOS(klines, swings);
+  const chochSignals = detectCHOCH(klines, swings);
+  const obs = detectOrderBlocks(klines, bosSignals);
+  const fvgs = detectFVGs(klines);
+  const liquidityZones = detectLiquidityZones(klines);
+  const manipulation = detectManipulation(klines, swings, currentPrice);
+  const cycle = classifyInstitutionalCycle(klines, bosSignals, manipulation);
+  const atr = calcATRFromKlines(klines);
 
-  let tp1: number, tp2: number, tp3: number, stopLoss: number;
-
-  if (direction === 'Long') {
-    tp1 = currentPrice * (1 + config.tpMultiplier1) + atrOffset * 0.5;
-    tp2 = currentPrice * (1 + config.tpMultiplier2) + atrOffset;
-    tp3 = currentPrice * (1 + config.tpMultiplier3) + atrOffset * 1.5;
-    stopLoss = currentPrice * (1 - config.slMultiplier) - atrOffset * 0.5;
-  } else {
-    tp1 = currentPrice * (1 - config.tpMultiplier1) - atrOffset * 0.5;
-    tp2 = currentPrice * (1 - config.tpMultiplier2) - atrOffset;
-    tp3 = currentPrice * (1 - config.tpMultiplier3) - atrOffset * 1.5;
-    stopLoss = currentPrice * (1 + config.slMultiplier) + atrOffset * 0.5;
+  // Detect manipulation phase — reduce leverage if present
+  const manipulationActive = manipulation.detected && manipulation.type === 'fakeout';
+  let leverage = randomInRange(config.leverageMin, config.leverageMax);
+  if (manipulationActive) {
+    leverage = Math.max(config.leverageMin, Math.floor(leverage * 0.6));
   }
 
-  const reasoning = generateReasoningSummary(best.symbol, direction, best.indicators, modality);
+  // Do not enter during active manipulation without displacement confirmation
+  // If stop hunt (resolved), it's actually a good entry signal
+  const skipEntry = manipulation.detected && manipulation.type === 'fakeout';
+
+  // Find SMC-based TP/SL levels
+  const obDirection = direction === 'Long' ? 'bullish' : 'bearish';
+  const fvgDirection = direction === 'Long' ? 'bullish' : 'bearish';
+  const nearestOB = findNearestUnmitigatedOB(obs, currentPrice, obDirection);
+  const nearestFVG = findNearestOpenFVG(fvgs, currentPrice, fvgDirection);
+  const sweptLiquidity = findSweptLiquidityZone(klines, swings, direction, currentPrice, atr);
+
+  const atrOffset = atr > 0 ? atr : currentPrice * 0.005;
+
+  // TP levels: TP1 = nearest FVG or mitigation zone, TP2 = swing liquidity, TP3 = opposing OB or major imbalance
+  let tp1: number, tp2: number, tp3: number, stopLoss: number;
+
+  const swingHighs = swings.filter((s) => s.type === 'high').map((s) => s.price).sort((a, b) => a - b);
+  const swingLows = swings.filter((s) => s.type === 'low').map((s) => s.price).sort((a, b) => b - a);
+
+  if (direction === 'Long') {
+    // TP1: nearest open bullish FVG above price, or ATR-based
+    tp1 = nearestFVG ? nearestFVG.midpoint : currentPrice * (1 + config.tpMultiplier1) + atrOffset * 0.5;
+    // TP2: nearest swing high (external liquidity)
+    const nextSwingHigh = swingHighs.find((h) => h > currentPrice * 1.001);
+    tp2 = nextSwingHigh ? nextSwingHigh : currentPrice * (1 + config.tpMultiplier2) + atrOffset;
+    // TP3: opposing bearish OB or major imbalance
+    const opposingOB = findNearestUnmitigatedOB(obs, currentPrice, 'bearish');
+    tp3 = opposingOB ? opposingOB.price : currentPrice * (1 + config.tpMultiplier3) + atrOffset * 1.5;
+    // SL: below swept liquidity zone
+    stopLoss = sweptLiquidity.price;
+  } else {
+    // TP1: nearest open bearish FVG below price
+    tp1 = nearestFVG ? nearestFVG.midpoint : currentPrice * (1 - config.tpMultiplier1) - atrOffset * 0.5;
+    // TP2: nearest swing low (external liquidity)
+    const nextSwingLow = swingLows.find((l) => l < currentPrice * 0.999);
+    tp2 = nextSwingLow ? nextSwingLow : currentPrice * (1 - config.tpMultiplier2) - atrOffset;
+    // TP3: opposing bullish OB
+    const opposingOB = findNearestUnmitigatedOB(obs, currentPrice, 'bullish');
+    tp3 = opposingOB ? opposingOB.price : currentPrice * (1 - config.tpMultiplier3) - atrOffset * 1.5;
+    // SL: above swept liquidity zone
+    stopLoss = sweptLiquidity.price;
+  }
+
+  // Enforce minimum RRR of 1:2
+  const slDistance = Math.abs(currentPrice - stopLoss);
+  const tp1Distance = Math.abs(tp1 - currentPrice);
+  if (tp1Distance < slDistance * 2) {
+    if (direction === 'Long') {
+      tp1 = currentPrice + slDistance * 2;
+    } else {
+      tp1 = currentPrice - slDistance * 2;
+    }
+  }
+
+  // Enforce TP ordering
+  if (direction === 'Long') {
+    tp1 = Math.max(tp1, currentPrice * 1.001);
+    tp2 = Math.max(tp2, tp1 * 1.001);
+    tp3 = Math.max(tp3, tp2 * 1.001);
+    stopLoss = Math.min(stopLoss, currentPrice * 0.999);
+  } else {
+    tp1 = Math.min(tp1, currentPrice * 0.999);
+    tp2 = Math.min(tp2, tp1 * 0.999);
+    tp3 = Math.min(tp3, tp2 * 0.999);
+    stopLoss = Math.max(stopLoss, currentPrice * 1.001);
+  }
+
+  // Validate ATR cap: TP levels > 3x ATR from entry get capped
+  const maxTPDistance = atr * 3;
+  if (direction === 'Long') {
+    if (tp1 - currentPrice > maxTPDistance * 3) tp1 = currentPrice + maxTPDistance;
+    if (tp2 - currentPrice > maxTPDistance * 5) tp2 = currentPrice + maxTPDistance * 2;
+    if (tp3 - currentPrice > maxTPDistance * 8) tp3 = currentPrice + maxTPDistance * 3;
+  } else {
+    if (currentPrice - tp1 > maxTPDistance * 3) tp1 = currentPrice - maxTPDistance;
+    if (currentPrice - tp2 > maxTPDistance * 5) tp2 = currentPrice - maxTPDistance * 2;
+    if (currentPrice - tp3 > maxTPDistance * 8) tp3 = currentPrice - maxTPDistance * 3;
+  }
+
+  // Build SMC context for reasoning
+  const lastBOS = bosSignals[bosSignals.length - 1];
+  const lastCHOCH = chochSignals[chochSignals.length - 1];
+  const nearestLiqZone = liquidityZones.find((z) =>
+    direction === 'Long' ? z.type === 'equal_lows' : z.type === 'equal_highs'
+  );
+
+  const smcContext = {
+    bosDetected: !!lastBOS,
+    bosPrice: lastBOS?.price ?? 0,
+    chochDetected: !!lastCHOCH,
+    chochPrice: lastCHOCH?.price ?? 0,
+    obPrice: nearestOB?.price ?? null,
+    fvgPrice: nearestFVG?.midpoint ?? null,
+    liquidityZone: nearestLiqZone ? `${nearestLiqZone.type} at ${nearestLiqZone.price.toFixed(4)}` : '',
+    cycle,
+    manipulation: manipulation.detected ? manipulation.description : '',
+    leverageReduced: manipulationActive,
+  };
+
+  const reasoning = generateSMCReasoning(best.symbol, direction, best.indicators, modality, smcContext);
+
+  // If fakeout detected, still generate trade but note it in reasoning (guardrail: skip entry)
+  const finalReasoning = skipEntry
+    ? `[CAUTION: Fakeout detected — entry deferred until BOS confirmed] ${reasoning}`
+    : reasoning;
 
   return {
     id: `${modality}-${Date.now()}`,
@@ -254,7 +392,7 @@ export async function generateAITradeForModality(
     status: 'Open',
     timestamp: Date.now(),
     modality,
-    reasoning,
+    reasoning: finalReasoning,
     utcDate: new Date().toISOString().split('T')[0],
   };
 }

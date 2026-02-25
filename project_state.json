@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 53,
-  "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis",
+  "projectStateVersion": 61,
+  "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis. The AI engine is now grounded in two comprehensive trading knowledge bases: (1) Trading & Crypto Market fundamentals covering Price Action, Candlesticks, Chart Patterns, Volume, Psychology, Strategies, and Risk Management; (2) Smart Money Concepts (SMC) covering Institutional Mind, Market Structure (BOS/CHOCH), Liquidity, Order Blocks, Fair Value Gaps, Mitigation, Manipulation, and complete SMC strategies. These knowledge bases serve as the foundation for all AI actions across all tabs.",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
     "Frontend calls Binance Futures API directly for market data",
@@ -20,7 +20,8 @@
     "Settings/API key gear icon button in the header is unresponsive when clicked — the BinanceCredentialsPanel settings section does not open",
     "Enabling 'Live Trade Mode' causes the application to freeze/hang — the only recovery is closing the app; orders are not being sent to Binance",
     "'Import from Binance' button not visible in Dashboard tab even when Binance credentials are configured and connection test passes",
-    "Position Size Calculator does not show all Binance USD-M Futures perpetual pairs — only a limited subset is available for selection"
+    "Position Size Calculator does not show all Binance USD-M Futures perpetual pairs — only a limited subset is available for selection",
+    "Scenario Simulator only shows 'COAI' in the asset list and the selection cannot be changed"
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -775,6 +776,86 @@
         "REQ-94"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-create-a-position-recovery-module-utility-frontend-src-utils-positionrecoveryengine-ts-that-analyzes-a-losing-position-and-generates-ai-powered-recovery-strategies-given-a-position-s-symbol-position-type-long-short-entry-price-current-price-leverage-investment-and-stop-loss-level-the-engine-must-evaluate-and-return-an-array-of-applicable-recovery-strategies-from-the-following-options-1-hedging-open-an-opposite-position-to-neutralize-further-loss-provide-recommended-hedge-size-and-symbol-2-dollar-cost-averaging-dca-add-to-the-position-at-a-lower-price-to-reduce-average-entry-provide-recommended-dca-entry-price-additional-investment-amount-and-resulting-average-entry-price-3-partial-close-close-a-portion-of-the-position-to-reduce-exposure-and-lock-in-partial-loss-provide-recommended-close-percentage-and-estimated-saved-capital-4-tp-sl-adjustment-suggest-revised-take-profit-and-stop-loss-levels-based-on-current-market-structure-and-atr-volatility-fetched-from-binance-klines-https-fapi-binance-com-fapi-v1-klines-each-strategy-object-must-include-strategytype-hedge-dca-partial-close-tp-sl-adjustment-title-human-readable-label-description-explanation-of-the-strategy-risklevel-low-medium-high-estimatedrecoverypct-estimated-percentage-of-loss-that-could-be-recovered-actionablesteps-array-of-strings-with-specific-instructions-and-recommendedparams-an-object-with-strategy-specific-numeric-parameters-the-engine-must-use-live-price-data-and-atr-calculations-to-make-recommendations-data-driven-not-static",
+      "title": "Create a Position Recovery module utility (frontend/src/utils/positionRecoveryEngine.ts) that analyzes a losing position and generates AI-powered recovery strategies. Given a position's symbol, position type (Long/Short), entry price, current price, leverage, investment, and stop-loss level, the engine must evaluate and return an array of applicable recovery strategies from the following options: (1) Hedging — open an opposite position to neutralize further loss; provide recommended hedge size and symbol; (2) Dollar-Cost Averaging (DCA) — add to the position at a lower price to reduce average entry; provide recommended DCA entry price, additional investment amount, and resulting average entry price; (3) Partial Close — close a portion of the position to reduce exposure and lock in partial loss; provide recommended close percentage and estimated saved capital; (4) TP/SL Adjustment — suggest revised take-profit and stop-loss levels based on current market structure and ATR volatility fetched from Binance klines (https://fapi.binance.com/fapi/v1/klines). Each strategy object must include: strategyType ('hedge' | 'dca' | 'partial_close' | 'tp_sl_adjustment'), title (human-readable label), description (explanation of the strategy), riskLevel ('low' | 'medium' | 'high'), estimatedRecoveryPct (estimated percentage of loss that could be recovered), actionableSteps (array of strings with specific instructions), and recommendedParams (an object with strategy-specific numeric parameters). The engine must use live price data and ATR calculations to make recommendations data-driven, not static.",
+      "reqIds": [
+        "REQ-95"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-positionrecoverycard-component-frontend-src-components-positionrecoverycard-tsx-that-displays-the-recovery-strategies-for-a-given-losing-position-the-component-receives-a-position-object-and-fetches-the-live-current-price-https-fapi-binance-com-fapi-v1-ticker-price-symbol-symbol-to-determine-whether-the-position-is-in-loss-current-pnl-0-when-pnl-is-negative-render-the-card-showing-1-a-header-badge-recovery-mode-with-an-amber-warning-color-using-the-existing-golden-themed-css-variables-2-the-current-pnl-in-usd-and-percentage-color-coded-red-3-a-tabbed-or-accordion-layout-listing-each-recovery-strategy-returned-by-positionrecoveryengine-ts-with-the-strategy-title-risk-level-badge-estimated-recovery-percentage-description-and-numbered-actionable-steps-4-a-refresh-strategies-button-that-re-runs-the-recovery-engine-with-the-latest-price-data-when-pnl-is-zero-or-positive-render-nothing-return-null-style-all-elements-consistently-with-the-existing-golden-themed-card-design-system",
+      "title": "Create a PositionRecoveryCard component (frontend/src/components/PositionRecoveryCard.tsx) that displays the recovery strategies for a given losing position. The component receives a Position object and fetches the live current price (https://fapi.binance.com/fapi/v1/ticker/price?symbol=SYMBOL) to determine whether the position is in loss (current PnL < 0). When PnL is negative, render the card showing: (1) a header badge 'Recovery Mode' with an amber/warning color using the existing golden-themed CSS variables; (2) the current PnL in USD and percentage (color-coded red); (3) a tabbed or accordion layout listing each recovery strategy returned by positionRecoveryEngine.ts, with the strategy title, risk level badge, estimated recovery percentage, description, and numbered actionable steps; (4) a 'Refresh Strategies' button that re-runs the recovery engine with the latest price data. When PnL is zero or positive, render nothing (return null). Style all elements consistently with the existing golden-themed card design system.",
+      "reqIds": [
+        "REQ-96"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-integrate-the-positionrecoverycard-component-into-the-existing-positioncard-component-frontend-src-components-positioncard-tsx-below-the-existing-pnl-display-and-tp-sl-sections-within-each-positioncard-render-a-positionrecoverycard-passing-the-current-position-data-the-positionrecoverycard-must-be-conditionally-visible-it-should-only-appear-and-only-make-api-calls-when-the-monitored-position-s-current-pnl-is-negative-no-layout-shift-should-occur-for-positions-that-are-in-profit",
+      "title": "Integrate the PositionRecoveryCard component into the existing PositionCard component (frontend/src/components/PositionCard.tsx). Below the existing PnL display and TP/SL sections within each PositionCard, render a PositionRecoveryCard passing the current position data. The PositionRecoveryCard must be conditionally visible — it should only appear (and only make API calls) when the monitored position's current PnL is negative. No layout shift should occur for positions that are in profit.",
+      "reqIds": [
+        "REQ-97"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-recovery-insights-summary-section-to-the-ai-insights-tab-frontend-src-components-aiinsightstab-tsx-at-the-top-of-the-tab-before-the-per-position-ai-analysis-sections-render-a-summary-row-that-counts-how-many-active-positions-are-currently-in-loss-and-displays-a-prominent-banner-e-g-x-positions-need-recovery-attention-when-one-or-more-positions-have-negative-pnl-clicking-the-banner-or-a-view-recovery-strategies-cta-should-scroll-the-user-to-or-highlight-the-relevant-positioncard-entries-on-the-dashboard-tab-if-no-positions-are-in-loss-display-a-small-green-all-positions-healthy-indicator-instead",
+      "title": "Add a 'Recovery Insights' summary section to the AI Insights tab (frontend/src/components/AIInsightsTab.tsx). At the top of the tab, before the per-position AI analysis sections, render a summary row that counts how many active positions are currently in loss and displays a prominent banner (e.g., 'X positions need recovery attention') when one or more positions have negative PnL. Clicking the banner or a 'View Recovery Strategies' CTA should scroll the user to or highlight the relevant PositionCard entries on the Dashboard tab. If no positions are in loss, display a small green 'All positions healthy' indicator instead.",
+      "reqIds": [
+        "REQ-98"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-scenariosimulator-component-frontend-src-components-scenariosimulator-tsx-so-that-the-asset-position-list-is-populated-from-all-active-positions-tracked-by-usepositionstorage-or-the-positions-prop-passed-down-from-riskmanagementtab-tsx-not-from-a-hardcoded-or-stale-single-symbol-source-the-position-selector-must-reflect-every-position-currently-stored-in-localstorage-under-the-positions-key-allow-the-user-to-select-any-of-them-and-default-to-the-first-available-position-on-load-if-no-positions-exist-display-an-appropriate-empty-state-message-e-g-no-positions-found-import-positions-from-the-dashboard-tab",
+      "title": "Fix the ScenarioSimulator component (frontend/src/components/ScenarioSimulator.tsx) so that the asset/position list is populated from all active positions tracked by usePositionStorage (or the positions prop passed down from RiskManagementTab.tsx), not from a hardcoded or stale single-symbol source. The position selector must reflect every position currently stored in localStorage under the positions key, allow the user to select any of them, and default to the first available position on load. If no positions exist, display an appropriate empty state message (e.g., 'No positions found — import positions from the Dashboard tab').",
+      "reqIds": [
+        "REQ-99"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refine-the-ai-trade-selection-algorithm-in-frontend-src-utils-aitradeselection-ts-to-incorporate-smc-and-institutional-concepts-from-the-two-knowledge-bases-the-algorithm-must-1-identify-market-structure-using-bos-break-of-structure-and-choch-change-of-character-signals-derived-from-recent-kline-data-2-detect-order-block-ob-zones-the-last-opposing-candle-before-a-strong-displacement-and-use-them-as-entry-confluence-3-identify-fair-value-gaps-fvg-between-candles-as-imbalance-zones-and-use-them-as-entry-and-target-confirmation-4-detect-liquidity-zones-equal-highs-lows-swing-highs-lows-as-potential-manipulation-targets-5-classify-each-trade-entry-as-aligned-with-or-against-the-institutional-cycle-accumulation-manipulation-distribution-6-adjust-leverage-recommendations-downward-when-manipulation-signals-stop-hunt-patterns-fakeouts-near-liquidity-clusters-are-detected-7-set-minimum-risk-reward-ratio-rrr-at-1-2-with-targets-up-to-1-5-using-external-liquidity-and-fvg-targets-8-place-stop-loss-below-the-manipulated-liquidity-zone-rather-than-at-a-simple-percentage-persist-the-reasoning-for-each-trade-selection-in-the-aitrade-object-s-existing-reasoning-field-explicitly-referencing-the-detected-smc-concepts-e-g-bos-confirmed-on-1h-ob-at-42-150-fvg-target-at-43-800-sl-below-equal-lows-at-41-900",
+      "title": "Refine the AI trade selection algorithm in frontend/src/utils/aiTradeSelection.ts to incorporate SMC and institutional concepts from the two knowledge bases. The algorithm must: (1) identify market structure using BOS (Break of Structure) and CHOCH (Change of Character) signals derived from recent kline data; (2) detect Order Block (OB) zones — the last opposing candle before a strong displacement — and use them as entry confluence; (3) identify Fair Value Gaps (FVG) between candles as imbalance zones and use them as entry and target confirmation; (4) detect liquidity zones (equal highs/lows, swing highs/lows) as potential manipulation targets; (5) classify each trade entry as aligned with or against the institutional cycle (Accumulation → Manipulation → Distribution); (6) adjust leverage recommendations downward when manipulation signals (stop hunt patterns, fakeouts near liquidity clusters) are detected; (7) set minimum Risk-Reward Ratio (RRR) at 1:2 with targets up to 1:5 using external liquidity and FVG targets; (8) place stop-loss below the manipulated liquidity zone rather than at a simple percentage. Persist the reasoning for each trade selection in the AITrade object's existing reasoning field, explicitly referencing the detected SMC concepts (e.g., 'BOS confirmed on 1H, OB at 42,150, FVG target at 43,800, SL below equal lows at 41,900').",
+      "reqIds": [
+        "REQ-101"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refine-the-take-profit-calculator-in-frontend-src-utils-takeprofitcalculator-ts-to-use-smc-based-target-methodology-tp1-must-target-the-nearest-internal-fvg-or-mitigation-zone-tp2-must-target-the-nearest-swing-high-low-external-liquidity-tp3-must-target-the-next-major-ob-or-imbalance-zone-beyond-tp2-for-each-tp-level-the-reasoning-text-must-reference-the-specific-smc-concept-used-e-g-tp1-at-fvg-fill-43-200-tp2-at-equal-highs-liquidity-44-500-tp3-at-opposing-ob-46-000-use-atr-to-validate-that-targets-are-realistic-relative-to-current-volatility-discard-any-tp-level-where-the-required-move-exceeds-3-atr-for-the-relevant-timeframe",
+      "title": "Refine the take-profit calculator in frontend/src/utils/takeProfitCalculator.ts to use SMC-based target methodology. TP1 must target the nearest internal FVG or mitigation zone. TP2 must target the nearest swing high/low (external liquidity). TP3 must target the next major OB or imbalance zone beyond TP2. For each TP level, the reasoning text must reference the specific SMC concept used (e.g., 'TP1 at FVG fill 43,200', 'TP2 at equal highs liquidity 44,500', 'TP3 at opposing OB 46,000'). Use ATR to validate that targets are realistic relative to current volatility — discard any TP level where the required move exceeds 3× ATR for the relevant timeframe.",
+      "reqIds": [
+        "REQ-102"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refine-the-stop-loss-calculator-in-frontend-src-utils-stoplosscalculator-ts-to-use-institutional-stop-placement-logic-from-the-smc-knowledge-base-the-stop-loss-must-be-placed-below-long-or-above-short-the-most-recently-identified-manipulated-liquidity-zone-specifically-below-the-lowest-wick-of-the-identified-order-block-or-the-equal-lows-highs-cluster-that-was-swept-before-the-entry-displacement-the-reasoning-text-must-state-1-the-type-of-liquidity-zone-swept-equal-lows-swing-low-stop-hunt-wick-2-the-atr-based-buffer-applied-3-the-resulting-capital-risk-percentage-enforce-the-risk-management-rule-of-0-5-2-capital-risk-per-trade-as-documented-in-the-knowledge-base-s-gest-o-de-risco-section",
+      "title": "Refine the stop-loss calculator in frontend/src/utils/stopLossCalculator.ts to use institutional stop placement logic from the SMC knowledge base. The stop-loss must be placed below (Long) or above (Short) the most recently identified manipulated liquidity zone — specifically below the lowest wick of the identified Order Block or the equal lows/highs cluster that was swept before the entry displacement. The reasoning text must state: (1) the type of liquidity zone swept (equal lows, swing low, stop hunt wick); (2) the ATR-based buffer applied; (3) the resulting capital risk percentage. Enforce the risk management rule of 0.5%–2% capital risk per trade as documented in the knowledge base's Gestão de Risco section.",
+      "reqIds": [
+        "REQ-103"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refine-the-market-reversal-detector-in-frontend-src-utils-marketreversaldetector-ts-to-use-smc-based-reversal-signals-in-addition-to-the-existing-rsi-divergence-and-ema-crossover-checks-add-detection-for-1-choch-a-lower-high-for-long-trades-or-higher-low-for-short-trades-that-breaks-the-most-recent-swing-with-displacement-signaling-a-structure-change-2-breaker-block-an-ob-that-has-been-fully-mitigated-and-broken-through-indicating-the-institutional-order-has-flipped-3-liquidity-sweep-without-continuation-price-sweeps-a-swing-high-low-but-closes-back-inside-the-range-without-creating-a-new-bos-indicating-a-failed-manipulation-4-opposing-fvg-left-open-in-the-reversal-direction-at-a-higher-timeframe-when-any-two-or-more-of-these-signals-align-set-detectedreversal-to-true-and-set-confidence-proportionally-2-signals-60-3-signals-80-4-signals-95-the-recommendedaction-must-follow-choch-breaker-reverse-single-choch-tighten-sl-sweep-without-continuation-tighten-sl-opposing-fvg-only-none",
+      "title": "Refine the market reversal detector in frontend/src/utils/marketReversalDetector.ts to use SMC-based reversal signals. In addition to the existing RSI divergence and EMA crossover checks, add detection for: (1) CHOCH — a lower high (for Long trades) or higher low (for Short trades) that breaks the most recent swing with displacement, signaling a structure change; (2) Breaker Block — an OB that has been fully mitigated and broken through, indicating the institutional order has flipped; (3) Liquidity sweep without continuation — price sweeps a swing high/low but closes back inside the range without creating a new BOS, indicating a failed manipulation; (4) Opposing FVG left open in the reversal direction at a higher timeframe. When any two or more of these signals align, set detectedReversal to true and set confidence proportionally (2 signals = 60, 3 signals = 80, 4 signals = 95). The recommendedAction must follow: CHOCH + Breaker = 'reverse'; single CHOCH = 'tighten_sl'; sweep without continuation = 'tighten_sl'; opposing FVG only = 'none'.",
+      "reqIds": [
+        "REQ-104"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refine-the-sentiment-analysis-utility-in-frontend-src-utils-sentimentanalysis-ts-to-incorporate-institutional-order-flow-concepts-from-the-knowledge-bases-in-addition-to-the-existing-rsi-macd-indicators-add-the-following-sentiment-factors-1-volume-spike-analysis-a-volume-spike-greater-than-2-the-20-period-average-volume-indicates-institutional-activity-classify-as-bullish-if-price-closed-up-bearish-if-price-closed-down-2-imbalance-detection-count-the-number-of-open-fvgs-in-each-direction-within-the-last-50-candles-more-bullish-fvgs-bullish-bias-more-bearish-fvgs-bearish-bias-3-liquidity-sweep-direction-if-the-most-recent-swing-sweep-was-below-price-equal-lows-swept-and-price-recovered-classify-as-bullish-manipulation-resolved-4-wyckoff-phase-estimation-detect-accumulation-spring-upthrust-sequence-or-distribution-upthrust-utad-sequence-using-recent-price-structure-include-each-new-factor-as-a-named-contributor-in-the-sentiment-result-s-factors-array-with-its-weight-and-direction",
+      "title": "Refine the sentiment analysis utility in frontend/src/utils/sentimentAnalysis.ts to incorporate institutional order flow concepts from the knowledge bases. In addition to the existing RSI/MACD indicators, add the following sentiment factors: (1) Volume Spike Analysis — a volume spike greater than 2× the 20-period average volume indicates institutional activity; classify as bullish if price closed up, bearish if price closed down; (2) Imbalance Detection — count the number of open FVGs in each direction within the last 50 candles; more bullish FVGs = bullish bias, more bearish FVGs = bearish bias; (3) Liquidity Sweep Direction — if the most recent swing sweep was below price (equal lows swept) and price recovered, classify as bullish manipulation resolved; (4) Wyckoff Phase Estimation — detect Accumulation (spring + upthrust sequence) or Distribution (upthrust + UTAD sequence) using recent price structure. Include each new factor as a named contributor in the sentiment result's factors array with its weight and direction.",
+      "reqIds": [
+        "REQ-105"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -950,6 +1031,88 @@
       "id": "AR-29",
       "summary": "Position Size Calculator (Simulator) should offer access to all Binance USD-M Futures perpetual pairs for asset selection, not just a limited subset",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Add a 'Position Recovery' module that detects negative/losing positions and provides AI-powered recovery strategies (e.g., hedging, DCA, partial close, TP/SL adjustment suggestions) to help recover or minimize losses",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "Audit how RiskManagementTab.tsx passes position data down to ScenarioSimulator.tsx and PortfolioExposureDashboard.tsx. Ensure the positions array from usePositionStorage (or usePositionMonitoring) is correctly forwarded as a prop to ScenarioSimulator. If ScenarioSimulator is currently reading positions independently from its own internal state or a separate hook with a stale default, replace that with the authoritative positions prop from the parent tab component.",
+      "reqIds": [
+        "REQ-100"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-33",
+      "summary": "Refine all AI logic across all tabs using the two trading knowledge bases (Price Action + SMC): improve TP/SL recommendations, reversal detection, sentiment analysis, trend prediction, recovery strategies, and trade selection algorithms to use institutional concepts (BOS, CHOCH, OB, FVG, liquidity, mitigation, manipulation detection, RRR 1:2–1:5, stop placement below manipulated liquidity)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-39",
+      "summary": "Refine the trend prediction utility in frontend/src/utils/trendPrediction.ts to incorporate multi-timeframe structural analysis from the SMC knowledge base. For short-term predictions, use BOS and CHOCH signals on the 15m/1h timeframes to determine structural direction. For medium-term predictions, use BOS/CHOCH on the 4h/1d timeframes. The prediction confidence must increase when: (1) the short-term and medium-term structural directions are aligned; (2) there is an unmitigated OB in the direction of the predicted move within reach; (3) there is an open FVG acting as a magnet in the predicted direction. The prediction confidence must decrease when: (1) price is inside a consolidation range with no clear BOS; (2) a recent CHOCH has occurred that contradicts the trend. Display the structural basis in the prediction's reasoning text (e.g., 'BOS confirmed on 4H bullish structure, unmitigated OB at 41,800 below current price as support, FVG magnet at 44,200 above').",
+      "reqIds": [
+        "REQ-106"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-40",
+      "summary": "Refine the adjustment suggestions utility in frontend/src/utils/adjustmentSuggestions.ts to use SMC-based criteria for TP and SL adjustment triggers. A TP adjustment must be suggested when: (1) a new FVG has opened between the current price and the existing TP level, providing a better intermediate target; (2) a new BOS has occurred extending the structural trend, warranting a higher TP. An SL adjustment must be suggested when: (1) a new OB has formed closer to the current price that provides a stronger institutional support/resistance, allowing the SL to be moved to breakeven or trailed; (2) a liquidity sweep has occurred in the direction of the trade without reversal, confirming the institutional bias and allowing SL tightening. Each suggestion must include the SMC concept that triggered it in the suggestion's reasoning field.",
+      "reqIds": [
+        "REQ-107"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-41",
+      "summary": "Refine the position recovery engine in frontend/src/utils/positionRecoveryEngine.ts to use SMC-based recovery logic. For the Hedging strategy, identify whether there is an unmitigated OB in the opposite direction that would serve as a hedge entry zone, and include this OB price in the recommendedParams. For the DCA strategy, use the nearest unmitigated OB in the trade direction as the optimal DCA entry price rather than a fixed percentage below entry. For the TP/SL Adjustment strategy, apply the same SMC-based TP and SL logic from REQ-102 and REQ-103 to compute the revised levels. For the Partial Close strategy, recommend partial closure when price is trading inside a bearish OB (for Longs) or bullish OB (for Shorts), as this indicates institutional supply/demand working against the position. Each strategy's actionableSteps array must include a step that references the specific SMC zone being used.",
+      "reqIds": [
+        "REQ-108"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-42",
+      "summary": "Fine-tune real order execution: ensure all TP1/TP2/TP3 and Stop Loss orders are correctly sent to Binance when price targets are reached (live trading mode). Also, implement Accept/Reject functionality for AI TP recommendations in the 'AI Insights & Analysis' tab — accepting a recommendation should place the corresponding TP order on Binance (or update the simulated trade), while rejecting it dismisses the suggestion.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-43",
+      "summary": "Audit and fix the TP/SL order execution logic in useAITradeMonitoring.ts so that when a live AI trade's price crosses TP1, TP2, TP3, or the effective stop-loss, the corresponding real Binance order actions are triggered. Specifically: (1) When TP1 is crossed and tp1Executed is false — mark tp1Executed = true, cancel the original STOP_MARKET order via cancelOrder(), place a new STOP_MARKET at the entry price (breakeven), and persist the updated effectiveSL and riskManagementStep ('breakeven') to localStorage under 'ai_daily_trades'. (2) When TP2 is crossed and tp2Executed is false — mark tp2Executed = true, cancel the current STOP_MARKET order, place a new STOP_MARKET at the TP1 price (trailing), and persist effectiveSL and riskManagementStep ('trailing'). (3) When TP3 is crossed and tp3Executed is false — mark tp3Executed = true, place a MARKET close order for the full position quantity on the opposite side, record the closed trade in AI trade history with full TP3 profit, set status to 'TP Hit', and trigger auto-regeneration for that modality. (4) When the effective SL is crossed — place a MARKET close order on the opposite side, record the trade as 'SL Hit' in history, and trigger auto-regeneration. All Binance order calls must use binanceOrderService.ts and only fire when BOTH isLiveTradingEnabled() returns true AND getModalityLiveOrders()[trade.modality] is true. Each call must be individually wrapped in try/catch with a 10-second Promise.race timeout. If an order call fails, log the error, show a toast (e.g., 'TP1 order update failed — SL not moved to breakeven'), and continue updating the local trade state regardless.",
+      "reqIds": [
+        "REQ-109"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-44",
+      "summary": "Implement Accept and Reject functionality for AI take-profit recommendation suggestions displayed in the 'AI Insights' tab (AIInsightsTab.tsx) via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on a TP adjustment suggestion for a monitored position: (1) If live trading mode is ON and credentials are present, call placeTakeProfitMarketOrder() from binanceOrderService.ts with the suggested TP price and the appropriate position quantity and side, wrapped in try/catch with a 10-second timeout; show a toast 'TP order placed on Binance: {price}' on success or 'TP order failed: {error}' on failure. (2) Regardless of live trading mode, update the position's stored TP level(s) in localStorage (under the 'positions' key) with the newly accepted TP price, so the PositionCard and PositionDashboard reflect the updated target immediately. (3) Record the accepted suggestion in the adjustment history stored in localStorage (using the existing AdjustmentHistoryRecord type from frontend/src/types/adjustment.ts) with outcome 'accepted'. When the user clicks 'Reject' on a TP adjustment suggestion: (1) Do not place any order. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'. The accept/reject callbacks must be wired from AIInsightsTab.tsx down to AdjustmentSuggestionCard.tsx via props, using the existing onAccept and onDismiss prop signatures already defined on the component.",
+      "reqIds": [
+        "REQ-110"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-45",
+      "summary": "Implement Accept and Reject functionality for AI stop-loss adjustment suggestions displayed in the 'AI Insights' tab via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on an SL adjustment suggestion: (1) If live trading mode is ON and credentials are present, cancel the existing STOP_MARKET order for the position (using the stored Binance order ID if available, otherwise call getOpenOrders() to locate it) and place a new STOP_MARKET order at the suggested SL price with the appropriate quantity and side, both calls wrapped in try/catch with a 10-second timeout each; show toasts for success/failure of each step individually. (2) Regardless of live trading mode, update the position's stored stopLoss price in localStorage (under the 'positions' key) with the newly accepted SL price immediately. (3) Record the accepted suggestion in adjustment history with outcome 'accepted'. When the user clicks 'Reject' on an SL adjustment suggestion: (1) Do not place or cancel any orders. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'. The accept/reject callbacks must be correctly wired from AIInsightsTab.tsx down to AdjustmentSuggestionCard.tsx via the existing onAccept and onDismiss prop signatures.",
+      "reqIds": [
+        "REQ-111"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-46",
+      "summary": "Ensure the AdjustmentSuggestionCard component (frontend/src/components/AdjustmentSuggestionCard.tsx) and its rendering inside AIInsightsTab.tsx (frontend/src/components/AIInsightsTab.tsx) correctly wire the onAccept and onDismiss callbacks. Audit the current implementation: (1) Verify that AIInsightsTab.tsx passes functional onAccept and onDismiss handler props to each AdjustmentSuggestionCard — these must not be undefined, no-ops, or missing. (2) Ensure the 'Accept' and 'Reject' (or 'Dismiss') buttons inside AdjustmentSuggestionCard call these props when clicked, with the suggestion object passed as the argument. (3) If the component currently uses a local dismiss-only state without calling onAccept, refactor it so that the parent (AIInsightsTab) controls the accepted/dismissed state via the callbacks and removes the suggestion from its rendered list on both accept and dismiss. (4) The suggestion cards must disappear from the UI immediately after accept or reject is clicked, with no stale card lingering.",
+      "reqIds": [
+        "REQ-112"
+      ],
       "status": "pending"
     }
   ],

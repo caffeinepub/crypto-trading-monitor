@@ -1,14 +1,45 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T22:33:24.496Z",
-  "summary": "The diff modifies PositionSizeCalculator.tsx to integrate the useBinancePairs hook, adds a searchable pair selector with loading/error states, and wires the selected symbol to live price and leverage bracket fetches. All core REQ-94 acceptance criteria appear to be implemented.",
-  "missing_requirements": [],
+  "generatedAt": "2026-02-25T03:37:20.012Z",
+  "summary": "The diff only modifies project_state.json (a metadata/state tracking file) and does not contain any actual implementation changes to TypeScript/React source files. None of the four requirements (REQ-109, REQ-110, REQ-111, REQ-112) are implemented in this diff.",
+  "missing_requirements": [
+    {
+      "id": "REQ-109",
+      "requirement": "Audit and fix the TP/SL order execution logic in useAITradeMonitoring.ts so that when a live AI trade's price crosses TP1, TP2, TP3, or the effective stop-loss, the corresponding real Binance order actions are triggered via binanceOrderService.ts, with try/catch + 10-second timeouts, toast notifications, and localStorage persistence.",
+      "reason": "No changes to useAITradeMonitoring.ts or any related service/hook files are present in the diff. Only project_state.json was modified.",
+      "evidence": [
+        "project_state.json"
+      ]
+    },
+    {
+      "id": "REQ-110",
+      "requirement": "Implement Accept and Reject functionality for AI take-profit recommendation suggestions in AIInsightsTab.tsx via AdjustmentSuggestionCard, including placing TAKE_PROFIT_MARKET orders via binanceOrderService.ts, updating localStorage positions, recording adjustment history, and showing appropriate toasts.",
+      "reason": "No changes to AIInsightsTab.tsx, AdjustmentSuggestionCard.tsx, or binanceOrderService.ts are present in the diff.",
+      "evidence": [
+        "project_state.json"
+      ]
+    },
+    {
+      "id": "REQ-111",
+      "requirement": "Implement Accept and Reject functionality for AI stop-loss adjustment suggestions in AIInsightsTab.tsx via AdjustmentSuggestionCard, including cancelling existing STOP_MARKET orders and placing new ones via binanceOrderService.ts, updating localStorage positions, recording adjustment history, and showing individual toasts.",
+      "reason": "No changes to AIInsightsTab.tsx, AdjustmentSuggestionCard.tsx, or binanceOrderService.ts are present in the diff.",
+      "evidence": [
+        "project_state.json"
+      ]
+    },
+    {
+      "id": "REQ-112",
+      "requirement": "Ensure AdjustmentSuggestionCard.tsx and AIInsightsTab.tsx correctly wire onAccept and onDismiss callbacks, with parent-controlled state removal of suggestion cards after accept/reject actions.",
+      "reason": "No changes to AdjustmentSuggestionCard.tsx or AIInsightsTab.tsx are present in the diff.",
+      "evidence": [
+        "project_state.json"
+      ]
+    }
+  ],
   "hallucinated_features": [],
-  "confidence": 0.88,
+  "confidence": 0.97,
   "changed_files": [
-    "frontend-file-summaries.txt",
-    "frontend/src/components/PositionSizeCalculator.tsx",
     "project_state.json"
   ]
 }

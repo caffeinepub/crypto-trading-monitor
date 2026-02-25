@@ -1,24 +1,114 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Position Size Calculator to show all Binance USD-M Futures perpetual pairs",
+  "title": "Fine-tune real order execution for TP/SL hits and AI TP recommendation Accept/Reject actions",
   "requirements": [
     {
-      "id": "REQ-94",
-      "summary": "Update PositionSizeCalculator to populate its asset selector with all Binance USD-M Futures perpetual pairs from the useBinancePairs hook, replacing any hardcoded or filtered list, with loading and error states",
+      "id": "REQ-109",
+      "summary": "Audit and fix TP/SL order execution logic in useAITradeMonitoring.ts to trigger real Binance orders when AI trade price crosses TP1/TP2/TP3 or effective SL, with proper breakeven/trailing stop management and auto-regeneration",
       "acceptanceCriteria": [
-        "The PositionSizeCalculator asset dropdown/autocomplete is populated with every perpetual pair returned by useBinancePairs (contractType === 'PERPETUAL' from https://fapi.binance.com/fapi/v1/exchangeInfo) — no hardcoded or partial list.",
-        "Users can search and select any Binance USD-M Futures perpetual pair in the calculator.",
-        "A loading indicator is shown in the selector while pairs are being fetched.",
-        "An error message is shown if the Binance exchangeInfo endpoint fails to respond.",
-        "After selecting a pair, the live price and leverage bracket data are fetched for that specific symbol as before.",
-        "No regression in existing PositionSizeCalculator functionality (capital, risk %, stop-loss, leverage inputs and result display)."
+        "When an AI trade's current price crosses TP1 with live trading active for that modality, the original stop-loss order is cancelled and a new STOP_MARKET at entry price is placed on Binance.",
+        "When an AI trade's current price crosses TP2 with live trading active, the stop-loss is trailed to the TP1 price on Binance.",
+        "When an AI trade's current price crosses TP3 with live trading active, a MARKET close order is placed and the trade is recorded as closed in AI trade history.",
+        "When the effective SL is crossed with live trading active, a MARKET close order is placed and the trade is recorded as 'SL Hit' in AI trade history.",
+        "If live trading is OFF or the per-modality toggle is OFF, TP/SL crossings update local state only (no Binance order calls are made).",
+        "Each Binance order call has a 10-second timeout; failure logs to console and shows a toast without blocking the local state update.",
+        "Updated trade state (effectiveSL, riskManagementStep, tp1/2/3Executed, status) is persisted to localStorage under 'ai_daily_trades' after every action."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/PositionSizeCalculator.tsx",
+          "path": "frontend/src/hooks/useAITradeMonitoring.ts",
           "operation": "modify",
-          "description": "Integrate the existing useBinancePairs hook to populate the asset selector with all perpetual pairs. Replace any hardcoded symbol list with the hook's data. Add a loading state UI (spinner or skeleton) while pairs.isLoading is true. Display an error message when pairs.error is present. Ensure the selected symbol drives the existing live price fetch and leverage bracket fetch. Preserve all existing calculator inputs (capital, risk %, entry/stop-loss prices, leverage) and result display logic without regression."
+          "description": "Implement TP1/TP2/TP3 and SL crossing detection with real Binance order execution. When TP1 is crossed and tp1Executed is false: mark tp1Executed=true, call cancelOrder() for the original STOP_MARKET via binanceOrderService.ts, place new STOP_MARKET at entry price (breakeven), update effectiveSL and riskManagementStep='breakeven', persist to localStorage. When TP2 is crossed and tp2Executed is false: mark tp2Executed=true, cancel current STOP_MARKET, place new STOP_MARKET at TP1 price (trailing), update effectiveSL and riskManagementStep='trailing', persist. When TP3 is crossed and tp3Executed is false: mark tp3Executed=true, place MARKET close order for full position quantity on opposite side, record closed trade in AI history with status='TP Hit', trigger auto-regeneration for that modality. When effective SL is crossed: place MARKET close order, record trade as 'SL Hit' in history, trigger auto-regeneration. All order calls must check BOTH isLiveTradingEnabled() and getModalityLiveOrders()[trade.modality]. Wrap each order call in try/catch with 10-second Promise.race timeout. On failure, log error, show toast (e.g., 'TP1 order update failed — SL not moved to breakeven'), continue updating local state. Use binanceOrderService.ts for all order operations (cancelOrder, placeStopLossOrder, placeMarketOrder). After each action, persist updated trade state (effectiveSL, riskManagementStep, tp1/2/3Executed flags, status) to localStorage under 'ai_daily_trades' key via the existing storage hook."
+        },
+        {
+          "path": "frontend/src/services/binanceOrderService.ts",
+          "operation": "modify",
+          "description": "Ensure cancelOrder() function exists and is exported for cancelling existing STOP_MARKET orders by orderId. If not present, add cancelOrder(symbol: string, orderId: number) that sends a signed DELETE request to Binance /fapi/v1/order endpoint with symbol and orderId params, wrapped in the existing authenticatedFetch helper with timeout support. Verify placeStopLossOrder() and placeMarketOrder() are correctly exported and handle all required parameters (symbol, side, quantity, stopPrice for SL, and side/quantity for market orders). Ensure all functions use the existing HMAC-SHA256 signing logic and return typed responses or throw errors for proper error handling upstream."
+        },
+        {
+          "path": "frontend/src/utils/aiTradeHistoryStorage.ts",
+          "operation": "modify",
+          "description": "Ensure saveTradeRecord() function correctly appends closed AI trades to localStorage under the 'ai_trade_history' key. Verify duplicate-entry prevention logic works correctly for TP3 and SL hit scenarios. Ensure the function accepts fields for final exit price, status ('TP Hit', 'SL Hit'), realized PnL, and modality, and that all fields are persisted correctly for later retrieval in performance comparisons."
+        }
+      ]
+    },
+    {
+      "id": "REQ-110",
+      "summary": "Implement Accept and Reject functionality for AI take-profit recommendation suggestions in AIInsightsTab.tsx, placing TAKE_PROFIT_MARKET orders on Binance when accepted and updating position TP levels in localStorage",
+      "acceptanceCriteria": [
+        "Clicking 'Accept' on a TP suggestion in the AI Insights tab places a TAKE_PROFIT_MARKET order on Binance when live trading mode is ON and credentials are configured.",
+        "A success toast 'TP order placed on Binance: {price}' is shown on successful order placement.",
+        "A failure toast 'TP order failed: {error}' is shown if the order call fails, without blocking the local state update.",
+        "Regardless of live trading mode, the position's TP level in localStorage is updated to the accepted price immediately after clicking 'Accept'.",
+        "Clicking 'Accept' records an 'accepted' entry in the adjustment history in localStorage.",
+        "Clicking 'Reject' dismisses the suggestion card from the UI without placing any order.",
+        "Clicking 'Reject' records a 'dismissed' entry in the adjustment history in localStorage.",
+        "The accept/reject actions work correctly for all active positions listed in the AI Insights tab."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AIInsightsTab.tsx",
+          "operation": "modify",
+          "description": "Wire functional onAccept and onDismiss callback handlers to each AdjustmentSuggestionCard for take-profit suggestions. In the onAccept handler: (1) Check if live trading mode is ON via isLiveTradingEnabled() and credentials exist. If true, call placeTakeProfitMarketOrder() from binanceOrderService.ts with the suggested TP price, position quantity, and side, wrapped in try/catch with 10-second Promise.race timeout. Show toast 'TP order placed on Binance: {price}' on success or 'TP order failed: {error}' on failure. (2) Regardless of live trading mode, update the position's takeProfit field in localStorage under 'positions' key with the accepted TP price using the existing usePositionStorage hook or direct localStorage update. (3) Record the accepted suggestion in adjustment history using a helper that appends an AdjustmentHistoryRecord with outcome='accepted' to localStorage. (4) Remove the suggestion from the rendered list by filtering it out of local state. In the onDismiss handler: (1) Do not place any order. (2) Remove the suggestion from the rendered list. (3) Record a 'dismissed' entry in adjustment history. Ensure callbacks pass the suggestion object as argument and that card removal is immediate (no stale cards). Import placeTakeProfitMarketOrder from binanceOrderService.ts and toast from the UI library."
+        },
+        {
+          "path": "frontend/src/services/binanceOrderService.ts",
+          "operation": "modify",
+          "description": "Ensure placeTakeProfitMarketOrder() function exists and is exported. If not present, add placeTakeProfitMarketOrder(symbol: string, side: 'BUY' | 'SELL', quantity: number, stopPrice: number) that sends a signed POST request to Binance /fapi/v1/order endpoint with type='TAKE_PROFIT_MARKET', timeInForce='GTE_GTC', and the provided params. Use the existing authenticatedFetch helper with timeout support. Return the order response or throw a typed error for upstream handling. Verify the function signature matches the usage in AIInsightsTab.tsx."
+        },
+        {
+          "path": "frontend/src/utils/adjustmentHistoryStorage.ts",
+          "operation": "create",
+          "description": "Create a new utility module that provides saveAdjustmentHistory() and getAdjustmentHistory() functions for persisting AdjustmentHistoryRecord entries to localStorage under the 'adjustment_history' key. Use the existing AdjustmentHistoryRecord type from frontend/src/types/adjustment.ts. saveAdjustmentHistory() should append a new record to the array with timestamp, suggestion details, and outcome ('accepted' or 'dismissed'). getAdjustmentHistory() should retrieve and parse the array, returning an empty array if the key does not exist. Ensure the module exports both functions for use in AIInsightsTab.tsx."
+        }
+      ]
+    },
+    {
+      "id": "REQ-111",
+      "summary": "Implement Accept and Reject functionality for AI stop-loss adjustment suggestions in AIInsightsTab.tsx, cancelling existing STOP_MARKET orders and placing new ones at suggested SL prices on Binance when accepted",
+      "acceptanceCriteria": [
+        "Clicking 'Accept' on an SL suggestion in the AI Insights tab cancels the existing STOP_MARKET order and places a new one at the suggested price on Binance when live trading mode is ON.",
+        "Individual toasts are shown for the cancel step and the new order placement step.",
+        "If either order call fails, a failure toast is shown and execution continues — the local SL update is not blocked.",
+        "The position's stopLoss price in localStorage is updated to the accepted price immediately after clicking 'Accept', regardless of live trading mode.",
+        "Clicking 'Accept' records an 'accepted' entry in the adjustment history.",
+        "Clicking 'Reject' dismisses the suggestion card without placing or cancelling any orders.",
+        "Clicking 'Reject' records a 'dismissed' entry in the adjustment history."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AIInsightsTab.tsx",
+          "operation": "modify",
+          "description": "Wire functional onAccept and onDismiss callback handlers to each AdjustmentSuggestionCard for stop-loss suggestions. In the onAccept handler for SL suggestions: (1) Check if live trading mode is ON and credentials exist. If true: (a) Retrieve the existing STOP_MARKET order ID for the position from localStorage (or call getOpenOrders() from binanceOrderService.ts to locate it if orderId is not stored). (b) Call cancelOrder(symbol, orderId) from binanceOrderService.ts, wrapped in try/catch with 10-second timeout. Show toast 'SL order cancelled' on success or 'SL cancel failed: {error}' on failure. (c) Call placeStopLossOrder(symbol, side, quantity, stopPrice) with the suggested SL price, wrapped in try/catch with 10-second timeout. Show toast 'New SL order placed at {price}' on success or 'SL order placement failed: {error}' on failure. (2) Regardless of live trading mode or order success, update the position's stopLoss field in localStorage under 'positions' key with the accepted SL price. (3) Record the accepted suggestion in adjustment history with outcome='accepted'. (4) Remove the suggestion from the rendered list. In the onDismiss handler: (1) Do not place or cancel any orders. (2) Remove the suggestion from the rendered list. (3) Record outcome='dismissed' in adjustment history. Ensure both handlers pass the suggestion object and remove the card immediately. Import cancelOrder, placeStopLossOrder, and getOpenOrders from binanceOrderService.ts."
+        },
+        {
+          "path": "frontend/src/services/binanceOrderService.ts",
+          "operation": "modify",
+          "description": "Ensure getOpenOrders() function exists and is exported. If not present, add getOpenOrders(symbol: string) that sends a signed GET request to Binance /fapi/v1/openOrders endpoint with symbol param, using the existing authenticatedFetch helper with timeout. Return an array of open order objects containing orderId, type, side, stopPrice, etc. Ensure the function can be used to locate an existing STOP_MARKET order when the orderId is not stored locally. Verify cancelOrder() and placeStopLossOrder() are exported and handle all required parameters correctly."
+        }
+      ]
+    },
+    {
+      "id": "REQ-112",
+      "summary": "Ensure AdjustmentSuggestionCard component and AIInsightsTab.tsx correctly wire onAccept and onDismiss callbacks, and cards disappear immediately after accept or reject actions",
+      "acceptanceCriteria": [
+        "Each AdjustmentSuggestionCard in the AI Insights tab receives non-null onAccept and onDismiss callback props.",
+        "Clicking 'Accept' inside a card calls the onAccept callback with the suggestion data.",
+        "Clicking 'Reject'/'Dismiss' inside a card calls the onDismiss callback with the suggestion data.",
+        "After either action, the card is removed from the rendered list in AIInsightsTab without requiring a page reload.",
+        "No stale suggestion cards remain visible after the user has accepted or rejected them."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AdjustmentSuggestionCard.tsx",
+          "operation": "modify",
+          "description": "Audit the existing button handlers for 'Accept' and 'Reject'/'Dismiss' buttons. Ensure the 'Accept' button calls the onAccept prop (passed from parent) with the suggestion object as the argument. Ensure the 'Reject'/'Dismiss' button calls the onDismiss prop with the suggestion object. Remove any local dismiss-only state that bypasses the parent callbacks. Verify the component does not hide itself locally — card visibility must be controlled by the parent (AIInsightsTab) via the rendered list. Ensure button handlers do not prevent the callbacks from firing (e.g., no missing onClick wiring or conditional logic that blocks the call)."
+        },
+        {
+          "path": "frontend/src/components/AIInsightsTab.tsx",
+          "operation": "modify",
+          "description": "Audit the rendering logic for AdjustmentSuggestionCard components. Ensure each card receives functional onAccept and onDismiss callback props (not undefined, not no-ops). Maintain local state for the list of active suggestions (e.g., using useState or derived from the useAdjustmentSuggestions hook). In the onAccept callback: (1) Execute the accept logic (place order if live trading is on, update position TP/SL in localStorage, record in adjustment history). (2) Remove the accepted suggestion from the local suggestions array by filtering it out by suggestion.id or index. In the onDismiss callback: (1) Record the dismissal in adjustment history. (2) Remove the dismissed suggestion from the local suggestions array. Ensure the component re-renders immediately after state update so the card disappears from the UI without page reload. If suggestions are derived from a query, consider using a local state overlay to track which suggestions have been handled and filter them out during render."
         }
       ]
     }

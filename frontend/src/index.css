@@ -47,6 +47,9 @@
         --sentiment-neutral: 0.50 0.03 60;
         --suggestion-bg: 0.75 0.15 75 / 0.05;
         --suggestion-border: 0.75 0.15 75 / 0.3;
+        /* Warning / amber for recovery mode */
+        --warning: 0.72 0.17 55;
+        --warning-foreground: 0.15 0.02 60;
     }
 
     .dark {
@@ -92,6 +95,9 @@
         --sentiment-neutral: 0.65 0.04 65;
         --suggestion-bg: 0.78 0.16 75 / 0.08;
         --suggestion-border: 0.78 0.16 75 / 0.4;
+        /* Warning / amber for recovery mode */
+        --warning: 0.75 0.18 55;
+        --warning-foreground: 0.15 0.02 60;
     }
 
     * {

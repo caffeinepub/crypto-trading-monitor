@@ -1,4 +1,13 @@
-import { SentimentAnalysis, SentimentScore, SentimentFactor } from '../types/sentiment';
+import { SentimentAnalysis, SentimentFactor } from '../types/sentiment';
+import { BinanceKline } from '../services/binanceApi';
+import {
+  detectSwingPoints,
+  detectBOS,
+  detectFVGs,
+  detectLiquidityZones,
+  estimateWyckoffPhase,
+  calcATRFromKlines,
+} from './smcAnalysis';
 
 interface TechnicalIndicators {
   rsi: number;
@@ -116,137 +125,300 @@ function analyzeTechnicalIndicators(
   };
 }
 
+// ─── SMC: Volume Spike Analysis ───────────────────────────────────────────────
+
+interface VolumeSpikeResult {
+  detected: boolean;
+  direction: 'bullish' | 'bearish' | 'neutral';
+  spikeRatio: number;
+  label: string;
+  weight: number;
+}
+
+function analyzeVolumeSpike(klines: BinanceKline[]): VolumeSpikeResult {
+  if (klines.length < 22) return { detected: false, direction: 'neutral', spikeRatio: 1, label: 'Volume Spike', weight: 0 };
+
+  const volumes = klines.map((k) => k.volume);
+  const recent20Avg = volumes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
+  const lastVolume = volumes[volumes.length - 1];
+  const lastCandle = klines[klines.length - 1];
+  const spikeRatio = lastVolume / (recent20Avg || 1);
+
+  if (spikeRatio >= 2) {
+    const direction = lastCandle.close > lastCandle.open ? 'bullish' : 'bearish';
+    return {
+      detected: true,
+      direction,
+      spikeRatio,
+      label: 'Volume Spike',
+      weight: 15,
+    };
+  }
+
+  return { detected: false, direction: 'neutral', spikeRatio, label: 'Volume Spike', weight: 0 };
+}
+
+// ─── SMC: FVG Imbalance Count ─────────────────────────────────────────────────
+
+interface FVGImbalanceResult {
+  bullishCount: number;
+  bearishCount: number;
+  direction: 'bullish' | 'bearish' | 'neutral';
+  label: string;
+  weight: number;
+}
+
+function analyzeFVGImbalance(klines: BinanceKline[]): FVGImbalanceResult {
+  const fvgs = detectFVGs(klines.slice(-50));
+  const openFVGs = fvgs.filter((f) => !f.filled);
+  const bullishCount = openFVGs.filter((f) => f.direction === 'bullish').length;
+  const bearishCount = openFVGs.filter((f) => f.direction === 'bearish').length;
+
+  let direction: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+  let weight = 0;
+
+  if (bullishCount > bearishCount) {
+    direction = 'bullish';
+    weight = Math.min(12, (bullishCount - bearishCount) * 3);
+  } else if (bearishCount > bullishCount) {
+    direction = 'bearish';
+    weight = Math.min(12, (bearishCount - bullishCount) * 3);
+  }
+
+  return { bullishCount, bearishCount, direction, label: 'FVG Imbalance', weight };
+}
+
+// ─── SMC: Liquidity Sweep Direction ──────────────────────────────────────────
+
+interface LiquiditySweepResult {
+  detected: boolean;
+  direction: 'bullish' | 'bearish' | 'neutral';
+  description: string;
+  label: string;
+  weight: number;
+}
+
+function analyzeLiquiditySweepDirection(klines: BinanceKline[]): LiquiditySweepResult {
+  if (klines.length < 10) return { detected: false, direction: 'neutral', description: '', label: 'Liquidity Sweep', weight: 0 };
+
+  const swings = detectSwingPoints(klines, 3);
+  const recentHighs = swings.filter((s) => s.type === 'high').slice(-3);
+  const recentLows = swings.filter((s) => s.type === 'low').slice(-3);
+  const recent = klines.slice(-10);
+
+  // Bullish sweep: price swept below equal lows and recovered (bullish manipulation resolved)
+  for (const swing of recentLows.reverse()) {
+    const sweepCandle = recent.find((k) => k.low < swing.price && k.close > swing.price);
+    if (sweepCandle) {
+      return {
+        detected: true,
+        direction: 'bullish',
+        description: `Equal lows swept at ${swing.price.toFixed(4)}, price recovered — bullish manipulation resolved`,
+        label: 'Liquidity Sweep',
+        weight: 12,
+      };
+    }
+  }
+
+  // Bearish sweep: price swept above equal highs and rejected (bearish manipulation resolved)
+  for (const swing of recentHighs.reverse()) {
+    const sweepCandle = recent.find((k) => k.high > swing.price && k.close < swing.price);
+    if (sweepCandle) {
+      return {
+        detected: true,
+        direction: 'bearish',
+        description: `Equal highs swept at ${swing.price.toFixed(4)}, price rejected — bearish manipulation resolved`,
+        label: 'Liquidity Sweep',
+        weight: 12,
+      };
+    }
+  }
+
+  return { detected: false, direction: 'neutral', description: 'No recent liquidity sweep detected', label: 'Liquidity Sweep', weight: 0 };
+}
+
+// ─── SMC: Wyckoff Phase Factor ────────────────────────────────────────────────
+
+interface WyckoffResult {
+  phase: string;
+  direction: 'bullish' | 'bearish' | 'neutral';
+  label: string;
+  weight: number;
+  detectable: boolean;
+}
+
+function analyzeWyckoffPhase(klines: BinanceKline[]): WyckoffResult {
+  const volumes = klines.map((k) => k.volume);
+  const phase = estimateWyckoffPhase(klines, volumes);
+
+  if (phase === 'accumulation') {
+    return { phase, direction: 'bullish', label: 'Wyckoff Phase', weight: 10, detectable: true };
+  }
+  if (phase === 'markup') {
+    return { phase, direction: 'bullish', label: 'Wyckoff Phase', weight: 8, detectable: true };
+  }
+  if (phase === 'distribution') {
+    return { phase, direction: 'bearish', label: 'Wyckoff Phase', weight: 10, detectable: true };
+  }
+  if (phase === 'markdown') {
+    return { phase, direction: 'bearish', label: 'Wyckoff Phase', weight: 8, detectable: true };
+  }
+
+  return { phase: 'unknown', direction: 'neutral', label: 'Wyckoff Phase', weight: 0, detectable: false };
+}
+
+// ─── Main Sentiment Analysis ──────────────────────────────────────────────────
+
 export function analyzeSentiment(
   closePrices: number[],
-  volumes: number[]
+  volumes: number[],
+  klines?: BinanceKline[]
 ): SentimentAnalysis {
   const indicators = analyzeTechnicalIndicators(closePrices, volumes);
   const factors: SentimentFactor[] = [];
 
-  let bullishSignals = 0;
-  let bearishSignals = 0;
-  let totalSignals = 0;
+  let bullishScore = 0;
+  let bearishScore = 0;
+  let totalWeight = 0;
 
-  // RSI Analysis
+  // ─── Classic indicators ────────────────────────────────────────────────────
+
+  // RSI Analysis (weight: 20)
+  const rsiWeight = 20;
   if (indicators.rsi < 30) {
-    factors.push({
-      indicator: 'RSI',
-      value: `${indicators.rsi.toFixed(1)} (Oversold)`,
-      impact: 'positive',
-    });
-    bullishSignals += 2;
+    factors.push({ indicator: 'RSI', value: `${indicators.rsi.toFixed(1)} (Oversold)`, impact: 'positive' });
+    bullishScore += rsiWeight;
   } else if (indicators.rsi > 70) {
-    factors.push({
-      indicator: 'RSI',
-      value: `${indicators.rsi.toFixed(1)} (Overbought)`,
-      impact: 'negative',
-    });
-    bearishSignals += 2;
+    factors.push({ indicator: 'RSI', value: `${indicators.rsi.toFixed(1)} (Overbought)`, impact: 'negative' });
+    bearishScore += rsiWeight;
   } else {
-    factors.push({
-      indicator: 'RSI',
-      value: `${indicators.rsi.toFixed(1)} (Neutral)`,
-      impact: 'neutral',
-    });
+    factors.push({ indicator: 'RSI', value: `${indicators.rsi.toFixed(1)} (Neutral)`, impact: 'neutral' });
   }
-  totalSignals += 2;
+  totalWeight += rsiWeight;
 
-  // MACD Analysis
+  // MACD Analysis (weight: 20)
+  const macdWeight = 20;
   if (indicators.macdSignal === 'bullish') {
-    factors.push({
-      indicator: 'MACD',
-      value: 'Bullish crossover',
-      impact: 'positive',
-    });
-    bullishSignals += 2;
+    factors.push({ indicator: 'MACD', value: 'Bullish crossover', impact: 'positive' });
+    bullishScore += macdWeight;
   } else if (indicators.macdSignal === 'bearish') {
-    factors.push({
-      indicator: 'MACD',
-      value: 'Bearish crossover',
-      impact: 'negative',
-    });
-    bearishSignals += 2;
+    factors.push({ indicator: 'MACD', value: 'Bearish crossover', impact: 'negative' });
+    bearishScore += macdWeight;
   } else {
-    factors.push({
-      indicator: 'MACD',
-      value: 'No clear signal',
-      impact: 'neutral',
-    });
+    factors.push({ indicator: 'MACD', value: 'No clear signal', impact: 'neutral' });
   }
-  totalSignals += 2;
+  totalWeight += macdWeight;
 
-  // Price Action
+  // Price Action (weight: 15)
+  const paWeight = 15;
   if (indicators.priceAction === 'uptrend') {
-    factors.push({
-      indicator: 'Price Action',
-      value: 'Uptrend detected',
-      impact: 'positive',
-    });
-    bullishSignals += 1.5;
+    factors.push({ indicator: 'Price Action', value: 'Uptrend detected', impact: 'positive' });
+    bullishScore += paWeight;
   } else if (indicators.priceAction === 'downtrend') {
-    factors.push({
-      indicator: 'Price Action',
-      value: 'Downtrend detected',
-      impact: 'negative',
-    });
-    bearishSignals += 1.5;
+    factors.push({ indicator: 'Price Action', value: 'Downtrend detected', impact: 'negative' });
+    bearishScore += paWeight;
   } else {
-    factors.push({
-      indicator: 'Price Action',
-      value: 'Sideways movement',
-      impact: 'neutral',
-    });
+    factors.push({ indicator: 'Price Action', value: 'Sideways movement', impact: 'neutral' });
   }
-  totalSignals += 1.5;
+  totalWeight += paWeight;
 
-  // Volume Trend
+  // Volume Trend (weight: 10)
+  const volWeight = 10;
   if (indicators.volumeTrend === 'increasing' && indicators.momentum > 0) {
-    factors.push({
-      indicator: 'Volume',
-      value: 'Increasing with upward momentum',
-      impact: 'positive',
-    });
-    bullishSignals += 1;
+    factors.push({ indicator: 'Volume', value: 'Increasing with upward momentum', impact: 'positive' });
+    bullishScore += volWeight;
   } else if (indicators.volumeTrend === 'increasing' && indicators.momentum < 0) {
-    factors.push({
-      indicator: 'Volume',
-      value: 'Increasing with downward momentum',
-      impact: 'negative',
-    });
-    bearishSignals += 1;
+    factors.push({ indicator: 'Volume', value: 'Increasing with downward momentum', impact: 'negative' });
+    bearishScore += volWeight;
   } else {
-    factors.push({
-      indicator: 'Volume',
-      value: `${indicators.volumeTrend} volume`,
-      impact: 'neutral',
-    });
+    factors.push({ indicator: 'Volume', value: `${indicators.volumeTrend} volume`, impact: 'neutral' });
   }
-  totalSignals += 1;
+  totalWeight += volWeight;
 
-  // Momentum
+  // Momentum (weight: 5)
+  const momWeight = 5;
   if (Math.abs(indicators.momentum) > 5) {
     factors.push({
       indicator: 'Momentum',
       value: `${indicators.momentum > 0 ? '+' : ''}${indicators.momentum.toFixed(2)}%`,
       impact: indicators.momentum > 0 ? 'positive' : 'negative',
     });
-    if (indicators.momentum > 0) bullishSignals += 0.5;
-    else bearishSignals += 0.5;
+    if (indicators.momentum > 0) bullishScore += momWeight;
+    else bearishScore += momWeight;
+  } else {
+    factors.push({ indicator: 'Momentum', value: `${indicators.momentum.toFixed(2)}%`, impact: 'neutral' });
   }
-  totalSignals += 0.5;
+  totalWeight += momWeight;
 
-  // Calculate sentiment score and strength
-  const netSignal = bullishSignals - bearishSignals;
-  const strength = Math.min(100, (Math.abs(netSignal) / totalSignals) * 100);
+  // ─── SMC / Institutional Order Flow indicators ─────────────────────────────
 
-  let score: SentimentScore;
-  if (netSignal > 1) score = 'bullish';
-  else if (netSignal < -1) score = 'bearish';
+  if (klines && klines.length >= 22) {
+    // Volume Spike Analysis (weight: 15)
+    const volSpike = analyzeVolumeSpike(klines);
+    if (volSpike.detected) {
+      factors.push({
+        indicator: volSpike.label,
+        value: `${volSpike.spikeRatio.toFixed(1)}x avg volume — ${volSpike.direction} candle`,
+        impact: volSpike.direction === 'bullish' ? 'positive' : 'negative',
+      });
+      if (volSpike.direction === 'bullish') bullishScore += volSpike.weight;
+      else if (volSpike.direction === 'bearish') bearishScore += volSpike.weight;
+      totalWeight += volSpike.weight;
+    }
+
+    // FVG Imbalance Count (weight: up to 12)
+    const fvgImbalance = analyzeFVGImbalance(klines);
+    if (fvgImbalance.direction !== 'neutral') {
+      const fvgDesc = `${fvgImbalance.bullishCount} bullish / ${fvgImbalance.bearishCount} bearish open FVGs`;
+      factors.push({
+        indicator: fvgImbalance.label,
+        value: fvgDesc,
+        impact: fvgImbalance.direction === 'bullish' ? 'positive' : 'negative',
+      });
+      if (fvgImbalance.direction === 'bullish') bullishScore += fvgImbalance.weight;
+      else bearishScore += fvgImbalance.weight;
+      totalWeight += fvgImbalance.weight;
+    }
+
+    // Liquidity Sweep Direction (weight: 12)
+    const liqSweep = analyzeLiquiditySweepDirection(klines);
+    if (liqSweep.detected) {
+      factors.push({
+        indicator: liqSweep.label,
+        value: liqSweep.description,
+        impact: liqSweep.direction === 'bullish' ? 'positive' : 'negative',
+      });
+      if (liqSweep.direction === 'bullish') bullishScore += liqSweep.weight;
+      else if (liqSweep.direction === 'bearish') bearishScore += liqSweep.weight;
+      totalWeight += liqSweep.weight;
+    }
+
+    // Wyckoff Phase Estimation (weight: up to 10)
+    const wyckoff = analyzeWyckoffPhase(klines);
+    if (wyckoff.detectable) {
+      factors.push({
+        indicator: wyckoff.label,
+        value: `${wyckoff.phase.charAt(0).toUpperCase() + wyckoff.phase.slice(1)} phase detected`,
+        impact: wyckoff.direction === 'bullish' ? 'positive' : wyckoff.direction === 'bearish' ? 'negative' : 'neutral',
+      });
+      if (wyckoff.direction === 'bullish') bullishScore += wyckoff.weight;
+      else if (wyckoff.direction === 'bearish') bearishScore += wyckoff.weight;
+      totalWeight += wyckoff.weight;
+    }
+  }
+
+  // ─── Final score calculation ───────────────────────────────────────────────
+  const netScore = bullishScore - bearishScore;
+  const strength = totalWeight > 0 ? Math.min(100, Math.round((Math.abs(netScore) / totalWeight) * 100)) : 0;
+
+  let score: SentimentAnalysis['score'];
+  if (netScore > totalWeight * 0.1) score = 'bullish';
+  else if (netScore < -totalWeight * 0.1) score = 'bearish';
   else score = 'neutral';
 
   return {
     score,
-    strength: Math.round(strength),
+    strength,
     factors,
     timestamp: Date.now(),
   };

@@ -1,23 +1,4 @@
 {
   "kind": "feature_evidence_report",
-  "features": [
-    {
-      "featureId": "feature-update-the-asset-selection-input-in-the-positionsizecalculator-component-frontend-src-components-positionsizecalculator-tsx-to-populate-its-dropdown-autocomplete-with-the-full-list-of-binance-usd-m-futures-perpetual-pairs-fetched-via-the-existing-usebinancepairs-hook-frontend-src-hooks-usebinancepairs-ts-which-calls-https-fapi-binance-com-fapi-v1-exchangeinfo-and-filters-for-contracttype-perpetual-the-selector-must-expose-all-perpetual-pairs-returned-by-that-endpoint-not-a-hardcoded-or-pre-filtered-subset-display-a-loading-state-while-pairs-are-being-fetched-and-an-error-message-if-the-fetch-fails-the-selected-symbol-must-drive-the-live-price-fetch-https-fapi-binance-com-fapi-v1-ticker-price-symbol-symbol-and-leverage-bracket-fetch-https-fapi-binance-com-fapi-v1-leveragebracket-symbol-symbol-already-implemented-in-the-component",
-      "featureTitle": "Update the asset selection input in the PositionSizeCalculator component (frontend/src/components/PositionSizeCalculator.tsx) to populate its dropdown/autocomplete with the full list of Binance USD-M Futures perpetual pairs fetched via the existing useBinancePairs hook (frontend/src/hooks/useBinancePairs.ts), which calls https://fapi.binance.com/fapi/v1/exchangeInfo and filters for contractType === 'PERPETUAL'. The selector must expose all perpetual pairs returned by that endpoint — not a hardcoded or pre-filtered subset. Display a loading state while pairs are being fetched and an error message if the fetch fails. The selected symbol must drive the live price fetch (https://fapi.binance.com/fapi/v1/ticker/price?symbol=SYMBOL) and leverage bracket fetch (https://fapi.binance.com/fapi/v1/leverageBracket?symbol=SYMBOL) already implemented in the component.",
-      "files": [
-        "frontend/src/components/PositionSizeCalculator.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-94"
-      ],
-      "confidence": "high"
-    }
-  ]
+  "features": []
 }
