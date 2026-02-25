@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, EyeOff, Save, Trash2, Wifi, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { getCredentials, saveCredentials, clearCredentials } from '../utils/liveTradingStorage';
 import { authenticatedFetch } from '../utils/binanceAuth';
+import { fetchOpenPositions } from '../services/binancePositionService';
 import { toast } from 'sonner';
 
 // Named constant for test connection timeout
@@ -31,7 +32,7 @@ export function BinanceCredentialsPanel() {
     }
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!apiKey.trim()) {
       toast.error('API Key é obrigatória');
       return;
@@ -51,11 +52,30 @@ export function BinanceCredentialsPanel() {
         return;
       }
 
-      saveCredentials({ apiKey: apiKey.trim(), apiSecret: secretToSave });
+      const newCreds = { apiKey: apiKey.trim(), apiSecret: secretToSave };
+      saveCredentials(newCreds);
       // Dispatch credential-change event so all listeners update reactively
       window.dispatchEvent(new CustomEvent('credential-change'));
       setApiSecret('••••••••••••••••');
-      toast.success('Credenciais salvas com sucesso');
+
+      // REQ-114: Trigger automatic position import after saving credentials
+      try {
+        const imported = await fetchOpenPositions();
+        const count = imported.length;
+
+        if (count > 0) {
+          toast.success(`Credenciais salvas — ${count} posição(ões) importada(s) da Binance`);
+        } else {
+          toast.success('Credenciais salvas com sucesso. Nenhuma posição aberta encontrada.');
+        }
+
+        // Signal App.tsx to switch to Dashboard tab after import
+        window.dispatchEvent(new CustomEvent('trigger-dashboard-switch'));
+      } catch {
+        // Credentials are saved even if import fails
+        toast.success('Credenciais salvas com sucesso');
+        toast.warning('Não foi possível importar posições automaticamente. Use o botão "Importar da Binance" no Dashboard.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -216,7 +236,7 @@ export function BinanceCredentialsPanel() {
           ) : (
             <Save className="w-3.5 h-3.5" />
           )}
-          Salvar
+          {isSaving ? 'Salvando...' : 'Salvar'}
         </Button>
 
         <Button

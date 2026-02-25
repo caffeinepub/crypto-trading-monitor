@@ -1,21 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Fix and fully implement real Binance order execution when AI trade TP/SL levels are hit, and wire up Accept/Reject actions for AI TP and SL adjustment suggestions in the AI Insights tab.
+**Goal:** Auto-load and use Binance credentials on app start for seamless credential-driven operation, including auto-importing positions, periodic background sync, onboarding guidance, and auto-filling total capital from the Binance account balance.
 
 **Planned changes:**
-- In `useAITradeMonitoring.ts`, fix TP/SL price-crossing logic to trigger real Binance order calls via `binanceOrderService.ts`:
-  - TP1 hit: cancel existing STOP_MARKET, place new STOP_MARKET at entry (breakeven), persist `effectiveSL` and `riskManagementStep` to localStorage
-  - TP2 hit: cancel current STOP_MARKET, place new STOP_MARKET at TP1 price (trailing), persist state
-  - TP3 hit: place MARKET close order, record trade as closed with 'TP Hit' status, trigger auto-regeneration
-  - SL hit: place MARKET close order, record trade as 'SL Hit', trigger auto-regeneration
-  - All Binance calls only fire when `isLiveTradingEnabled()` AND per-modality live orders are both true
-  - Each call wrapped in try/catch with 10-second timeout; failures show toast and do not block local state update
-- In `AIInsightsTab.tsx`, implement functional `onAccept` and `onDismiss` handlers passed to each `AdjustmentSuggestionCard`:
-  - Accept TP suggestion: place `TAKE_PROFIT_MARKET` order on Binance (if live trading on), update position TP in localStorage, record 'accepted' in adjustment history
-  - Reject TP suggestion: dismiss card, record 'dismissed' in adjustment history
-  - Accept SL suggestion: cancel existing STOP_MARKET and place new one at suggested price (if live trading on), update position SL in localStorage, record 'accepted' in adjustment history
-  - Reject SL suggestion: dismiss card, record 'dismissed' in adjustment history
-- Refactor `AdjustmentSuggestionCard.tsx` so parent controls accept/dismiss state; cards are removed from UI immediately after either action with no stale cards remaining
+- On app mount, check for stored Binance credentials; if present, automatically import open USD-M Futures positions into the position list (skip duplicates) and show a toast with the import count or an error message. Runs once per session.
+- After the user saves Binance API credentials in BinanceCredentialsPanel for the first time, immediately trigger an automatic position import, show a combined confirmation toast, and switch the active tab to Dashboard.
+- Add a 60-second background sync loop that activates when credentials are present and Live Trading mode is ON: adds new positions from Binance, removes closed ones from the local list, and shows a toast only when the list changes.
+- Display a prominent onboarding banner in the Dashboard tab when no credentials are configured, with an "Open Settings" button that opens the SettingsDialog. The banner disappears reactively when credentials are saved (via the `credential-change` DOM event).
+- On app load with credentials present, fetch `totalWalletBalance` from the Binance USD-M Futures account endpoint and auto-fill `total_capital` in localStorage only if it is currently unset or zero, showing a confirmation toast when auto-filled.
 
-**User-visible outcome:** When AI trade prices cross TP1/TP2/TP3 or the stop-loss, real Binance orders are automatically placed or cancelled as appropriate. In the AI Insights tab, clicking Accept or Reject on TP/SL suggestion cards correctly executes or dismisses the recommendation, places real orders when live trading is active, and instantly removes the card from view.
+**User-visible outcome:** Users with saved Binance credentials will have their open positions and account balance automatically loaded on app start, kept in sync in the background, and guided through onboarding if credentials are missing — all without manual import steps.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 61,
+  "projectStateVersion": 63,
   "summary": "Crypto trading monitoring application where users manually input trading positions and receive AI-powered take-profit and stop-loss recommendations based on technical analysis. The AI engine is now grounded in two comprehensive trading knowledge bases: (1) Trading & Crypto Market fundamentals covering Price Action, Candlesticks, Chart Patterns, Volume, Psychology, Strategies, and Risk Management; (2) Smart Money Concepts (SMC) covering Institutional Mind, Market Structure (BOS/CHOCH), Liquidity, Order Blocks, Fair Value Gaps, Mitigation, Manipulation, and complete SMC strategies. These knowledge bases serve as the foundation for all AI actions across all tabs.",
   "architectural_notes": [
     "React + TypeScript + Tailwind CSS stack",
@@ -856,6 +856,46 @@
         "REQ-105"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-on-application-load-check-whether-binance-credentials-are-present-in-localstorage-using-hascredentials-from-binanceauth-ts-if-credentials-are-found-automatically-trigger-an-import-of-the-user-s-open-positions-from-binance-usd-m-futures-via-binancepositionservice-ts-the-existing-getopenpositions-function-and-merge-them-into-the-positions-list-managed-by-usepositionstorage-skipping-any-symbol-already-tracked-display-a-non-blocking-toast-notification-indicating-how-many-positions-were-imported-e-g-auto-imported-3-positions-from-binance-or-an-error-message-if-the-import-fails-this-auto-import-must-run-once-per-app-session-on-mount-not-on-every-re-render",
+      "title": "On application load, check whether Binance credentials are present in localStorage (using hasCredentials() from binanceAuth.ts). If credentials are found, automatically trigger an import of the user's open positions from Binance USD-M Futures (via binancePositionService.ts / the existing getOpenPositions function) and merge them into the positions list managed by usePositionStorage, skipping any symbol already tracked. Display a non-blocking toast notification indicating how many positions were imported (e.g., 'Auto-imported 3 positions from Binance') or an error message if the import fails. This auto-import must run once per app session on mount, not on every re-render.",
+      "reqIds": [
+        "REQ-113"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-settings-onboarding-flow-so-that-when-the-user-saves-binance-credentials-for-the-first-time-in-binancecredentialspanel-tsx-and-both-the-api-key-and-secret-are-non-empty-immediately-trigger-an-automatic-position-import-from-binance-after-the-credentials-are-saved-without-requiring-the-user-to-navigate-to-the-dashboard-tab-and-click-import-from-binance-after-the-import-completes-show-a-toast-e-g-credentials-saved-imported-n-positions-from-binance-and-switch-the-active-tab-to-dashboard-so-the-user-can-see-their-positions-right-away",
+      "title": "Update the Settings onboarding flow so that when the user saves Binance credentials for the first time (in BinanceCredentialsPanel.tsx) and both the API key and secret are non-empty, immediately trigger an automatic position import from Binance after the credentials are saved — without requiring the user to navigate to the Dashboard tab and click 'Import from Binance'. After the import completes, show a toast (e.g., 'Credentials saved — imported N positions from Binance') and switch the active tab to 'Dashboard' so the user can see their positions right away.",
+      "reqIds": [
+        "REQ-114"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-periodic-background-sync-that-refreshes-the-position-list-from-binance-every-60-seconds-when-credentials-are-present-hascredentials-returns-true-and-live-trading-mode-is-on-islivetradingenabled-returns-true-on-each-sync-cycle-call-getopenpositions-and-merge-any-new-positions-into-usepositionstorage-skip-existing-symbols-remove-from-the-local-list-any-position-whose-symbol-no-longer-appears-in-the-binance-response-i-e-it-has-been-closed-on-the-exchange-do-not-show-a-toast-on-routine-syncs-only-show-a-toast-if-new-positions-are-added-or-existing-ones-are-removed",
+      "title": "Add a periodic background sync that refreshes the position list from Binance every 60 seconds when credentials are present (hasCredentials() returns true) and Live Trading mode is ON (isLiveTradingEnabled() returns true). On each sync cycle, call getOpenPositions() and merge any new positions into usePositionStorage (skip existing symbols). Remove from the local list any position whose symbol no longer appears in the Binance response (i.e., it has been closed on the exchange). Do not show a toast on routine syncs — only show a toast if new positions are added or existing ones are removed.",
+      "reqIds": [
+        "REQ-115"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-dashboard-tab-dashboardtab-tsx-to-display-a-prominent-onboarding-banner-when-no-binance-credentials-are-configured-hascredentials-returns-false-the-banner-must-clearly-instruct-the-user-to-open-settings-gear-icon-and-enter-their-binance-api-key-and-secret-to-get-started-include-a-direct-open-settings-button-inside-the-banner-that-opens-the-settingsdialog-immediately-the-banner-must-disappear-as-soon-as-credentials-are-saved-reactively-responding-to-the-credential-change-custom-dom-event-without-requiring-a-page-reload",
+      "title": "Update the Dashboard tab (DashboardTab.tsx) to display a prominent onboarding banner when no Binance credentials are configured (hasCredentials() returns false). The banner must clearly instruct the user to open Settings (gear icon) and enter their Binance API Key and Secret to get started. Include a direct 'Open Settings' button inside the banner that opens the SettingsDialog immediately. The banner must disappear as soon as credentials are saved, reactively responding to the 'credential-change' custom DOM event without requiring a page reload.",
+      "reqIds": [
+        "REQ-116"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-ai-daily-trades-tab-to-automatically-use-the-user-s-binance-account-balance-as-the-total-capital-value-when-credentials-are-present-on-app-load-or-after-credentials-are-saved-fetch-the-account-s-available-balance-from-the-binance-usd-m-futures-account-endpoint-https-fapi-binance-com-fapi-v2-account-using-authenticatedfetch-from-binanceauth-ts-extract-the-totalwalletbalance-field-and-if-the-stored-total-capital-in-localstorage-is-unset-or-zero-automatically-set-it-via-totalcapitalstorage-to-the-fetched-wallet-balance-if-the-stored-total-capital-already-has-a-user-defined-value-do-not-overwrite-it-only-pre-fill-when-no-value-exists-show-a-toast-total-capital-set-from-binance-account-x-when-auto-filled",
+      "title": "Update the AI Daily Trades tab to automatically use the user's Binance account balance as the total capital value when credentials are present. On app load (or after credentials are saved), fetch the account's available balance from the Binance USD-M Futures account endpoint (https://fapi.binance.com/fapi/v2/account) using authenticatedFetch from binanceAuth.ts. Extract the totalWalletBalance field and, if the stored total_capital in localStorage is unset or zero, automatically set it via totalCapitalStorage to the fetched wallet balance. If the stored total_capital already has a user-defined value, do not overwrite it — only pre-fill when no value exists. Show a toast 'Total capital set from Binance account: $X' when auto-filled.",
+      "reqIds": [
+        "REQ-117"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -1113,6 +1153,12 @@
       "reqIds": [
         "REQ-112"
       ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-47",
+      "summary": "Adjust the application to work primarily with Binance credentials: on app load, if credentials are present, automatically import open positions from Binance, use real account data for portfolio/risk calculations, and ensure all features that require authentication (position import, order execution, account info) are triggered automatically without requiring manual data entry beyond the initial API key setup.",
+      "reqIds": [],
       "status": "pending"
     }
   ],
