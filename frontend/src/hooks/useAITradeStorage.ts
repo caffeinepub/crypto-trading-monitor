@@ -1,64 +1,76 @@
-import { AITrade } from '../types/aiTrade';
+import { useCallback } from 'react';
+import { AITrade } from '@/types/aiTrade';
 
 const STORAGE_KEY = 'ai_daily_trades';
 
-interface StoredData {
-  utcDate?: string; // kept for backward compatibility, no longer used for invalidation
-  trades: AITrade[];
-}
-
-/** Apply default values for new execution-state fields to maintain backward compatibility */
 function applyDefaults(trade: AITrade): AITrade {
   return {
+    liveOrdersEnabled: false,
     ...trade,
-    tp1Executed: trade.tp1Executed ?? false,
-    tp2Executed: trade.tp2Executed ?? false,
-    tp3Executed: trade.tp3Executed ?? false,
-    effectiveSL: trade.effectiveSL ?? trade.stopLoss,
-    riskManagementStep: trade.riskManagementStep ?? 'initial',
-    liveOrdersEnabled: trade.liveOrdersEnabled ?? false,
   };
 }
 
 export function useAITradeStorage() {
-  const getTrades = (): AITrade[] | null => {
+  const getTrades = useCallback((): AITrade[] => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const data: StoredData = JSON.parse(raw);
-      if (!data.trades || data.trades.length === 0) return null;
-      return data.trades.map(applyDefaults);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.map(applyDefaults) : [];
     } catch {
-      return null;
+      return [];
     }
-  };
+  }, []);
 
-  const saveTrades = (trades: AITrade[]): void => {
-    const data: StoredData = {
-      trades,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  };
+  const saveTrades = useCallback((trades: AITrade[]): void => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+      window.dispatchEvent(new CustomEvent('ai-trades-changed'));
+    } catch {
+      // non-fatal
+    }
+  }, []);
 
-  const clearTrades = (): void => {
+  const clearTrades = useCallback((): void => {
     localStorage.removeItem(STORAGE_KEY);
-  };
+    window.dispatchEvent(new CustomEvent('ai-trades-changed'));
+  }, []);
 
-  /**
-   * Returns true only when no trades are stored at all (needs initial generation).
-   * UTC date is no longer used for invalidation — trades persist until TP/SL/Reversal Guard closes them.
-   */
-  const checkAndResetDaily = (): boolean => {
+  const checkAndResetDaily = useCallback((): boolean => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return true; // no trades stored, needs generation
-      const data: StoredData = JSON.parse(raw);
-      if (!data.trades || data.trades.length === 0) return true;
-      return false; // trades exist, no reset needed
+      const lastReset = localStorage.getItem('ai_trades_last_reset');
+      const today = new Date().toDateString();
+      if (lastReset !== today) {
+        clearTrades();
+        localStorage.setItem('ai_trades_last_reset', today);
+        return true;
+      }
+      return false;
     } catch {
-      return true;
+      return false;
     }
-  };
+  }, [clearTrades]);
 
   return { getTrades, saveTrades, clearTrades, checkAndResetDaily };
+}
+
+// Standalone helpers for use outside of React components
+export function getStoredTrades(): AITrade[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(t => ({ liveOrdersEnabled: false, ...t })) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function storeTradesDirectly(trades: AITrade[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+    window.dispatchEvent(new CustomEvent('ai-trades-changed'));
+  } catch {
+    // non-fatal
+  }
 }

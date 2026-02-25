@@ -1,182 +1,186 @@
-import { useQuery } from '@tanstack/react-query';
-import { AITrade, TradingModality } from '../types/aiTrade';
-import { useAITradeStorage } from './useAITradeStorage';
-import { generateAITradeForModality } from '../utils/aiTradeSelection';
-import { getTotalCapital } from '../utils/totalCapitalStorage';
-import { isLiveTradingEnabled, getCredentials, getModalityLiveOrders } from '../utils/liveTradingStorage';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AITrade, TradingModality } from '@/types/aiTrade';
+import { generateAITradeForModality } from '@/utils/aiTradeSelection';
+import { useAITradeStorage } from '@/hooks/useAITradeStorage';
+import {
+  isLiveTradingEnabled,
+  getModalityLiveOrders,
+  getCredentials,
+} from '@/utils/liveTradingStorage';
 import {
   placeMarketOrder,
-  placeTakeProfitOrder,
   placeStopLossOrder,
+  placeTakeProfitMarketOrder,
   OrderParams,
-} from '../services/binanceOrderService';
-import { toast } from 'sonner';
+} from '@/services/binanceOrderService';
+import { getTotalCapital } from '@/utils/totalCapitalStorage';
 
 const MODALITIES: TradingModality[] = ['Scalping', 'DayTrading', 'SwingTrading', 'TrendFollowing'];
-const DEFAULT_INVESTMENT_PER_MODALITY = 1000;
 
-/** Timeout for each individual Binance order call triggered by AI trade generation (10 seconds). */
-const ORDER_CALL_TIMEOUT_MS = 10000;
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`TIMEOUT:${label}`)), ms)
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
     ),
   ]);
 }
 
-/**
- * Places live Binance orders for an AI-generated trade.
- * Each order call has an independent 10-second timeout.
- * Failures are caught individually and toasted — they never block trade persistence.
- */
-async function placeAITradeOrders(trade: AITrade): Promise<void> {
-  if (!isLiveTradingEnabled()) return;
+async function placeLiveOrdersForTrade(trade: AITrade): Promise<void> {
+  const liveEnabled = isLiveTradingEnabled();
+  const modalityOrders = getModalityLiveOrders();
+  const credentials = getCredentials();
 
-  const creds = getCredentials();
-  if (!creds) {
-    toast.warning('Live Trading ativo mas sem credenciais — trade salvo localmente apenas.');
-    return;
-  }
+  if (!liveEnabled || !credentials) return;
+  if (!(modalityOrders[trade.modality] ?? false)) return;
 
-  const symbol = trade.symbol.replace('/', '').replace('-', '');
-  const side: 'BUY' | 'SELL' = trade.positionType === 'Long' ? 'BUY' : 'SELL';
-  const closeSide: 'BUY' | 'SELL' = trade.positionType === 'Long' ? 'SELL' : 'BUY';
-  // Quantity = investmentAmount / entryPrice (number of contracts)
-  const quantity = parseFloat((trade.investmentAmount / trade.entryPrice).toFixed(3));
+  const isLong = trade.positionType === 'Long';
+  const closeSide: 'BUY' | 'SELL' = isLong ? 'SELL' : 'BUY';
+  const qty: number =
+    (trade as any).quantity ??
+    (trade.investmentAmount && trade.entryPrice
+      ? trade.investmentAmount / trade.entryPrice
+      : 0);
 
-  // 1. Market entry order
-  const entryParams: OrderParams = { symbol, side, quantity, credentials: creds };
+  if (qty <= 0) return;
+
+  const orderBase: OrderParams = {
+    symbol: trade.symbol,
+    side: closeSide,
+    quantity: qty,
+    credentials,
+  };
+
+  // Entry market order
   try {
     await withTimeout(
-      placeMarketOrder(entryParams),
-      ORDER_CALL_TIMEOUT_MS,
-      'ai-entry'
+      placeMarketOrder({
+        symbol: trade.symbol,
+        side: isLong ? 'BUY' : 'SELL',
+        quantity: qty,
+        credentials,
+      }),
+      10000
     );
-    toast.success(`AI Trade: ordem de entrada enviada à Binance: ${symbol}`);
-  } catch (err: unknown) {
-    const isTimeout = err instanceof Error && err.message.startsWith('TIMEOUT:');
-    if (isTimeout) {
-      toast.warning(`AI Trade: ordem de entrada expirou — ${symbol} salvo localmente apenas.`);
-    } else {
-      toast.error(`AI Trade: falha na ordem de entrada ${symbol}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-    }
+  } catch {
+    // non-fatal
   }
 
-  // 2. Take-profit order — use tp1 as the primary TP level
-  if (trade.tp1) {
-    const tpParams: OrderParams = {
-      symbol,
-      side: closeSide,
-      quantity,
-      credentials: creds,
-      stopPrice: trade.tp1,
-      reduceOnly: true,
-    };
+  // TP orders
+  for (const tpPrice of [trade.tp1, trade.tp2, trade.tp3]) {
+    if (!tpPrice) continue;
     try {
       await withTimeout(
-        placeTakeProfitOrder(tpParams),
-        ORDER_CALL_TIMEOUT_MS,
-        'ai-tp'
+        placeTakeProfitMarketOrder({ ...orderBase, stopPrice: tpPrice }),
+        10000
       );
-      toast.success(`AI Trade: ordem TP enviada à Binance: ${symbol}`);
-    } catch (err: unknown) {
-      const isTimeout = err instanceof Error && err.message.startsWith('TIMEOUT:');
-      if (isTimeout) {
-        toast.warning(`AI Trade: ordem TP expirou — ${symbol} sem TP na Binance.`);
-      } else {
-        toast.error(`AI Trade: falha na ordem TP ${symbol}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-      }
+    } catch {
+      // non-fatal
     }
   }
 
-  // 3. Stop-loss order — AITrade uses stopLoss (number)
+  // SL order
   if (trade.stopLoss) {
-    const slParams: OrderParams = {
-      symbol,
-      side: closeSide,
-      quantity,
-      credentials: creds,
-      stopPrice: trade.stopLoss,
-      reduceOnly: true,
-    };
     try {
       await withTimeout(
-        placeStopLossOrder(slParams),
-        ORDER_CALL_TIMEOUT_MS,
-        'ai-sl'
+        placeStopLossOrder({ ...orderBase, stopPrice: trade.stopLoss }),
+        10000
       );
-      toast.success(`AI Trade: ordem SL enviada à Binance: ${symbol}`);
-    } catch (err: unknown) {
-      const isTimeout = err instanceof Error && err.message.startsWith('TIMEOUT:');
-      if (isTimeout) {
-        toast.warning(`AI Trade: ordem SL expirou — ${symbol} sem SL na Binance.`);
-      } else {
-        toast.error(`AI Trade: falha na ordem SL ${symbol}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-      }
+    } catch {
+      // non-fatal
     }
   }
 }
 
 export function useAITradeGeneration() {
   const { getTrades, saveTrades, checkAndResetDaily } = useAITradeStorage();
+  const queryClient = useQueryClient();
 
-  const rawCapital = getTotalCapital();
-  const totalCapital = rawCapital !== null ? rawCapital : 0;
-  const investmentPerModality =
-    totalCapital > 0 ? totalCapital / 4 : DEFAULT_INVESTMENT_PER_MODALITY;
+  const generateTrades = useCallback(async (): Promise<AITrade[]> => {
+    // Check if we need to reset daily
+    checkAndResetDaily();
 
-  return useQuery<AITrade[]>({
-    queryKey: ['ai-daily-trades', totalCapital],
-    queryFn: async () => {
-      const needsGeneration = checkAndResetDaily();
+    const existingTrades = getTrades();
 
-      if (!needsGeneration) {
-        const stored = getTrades();
-        if (stored && stored.length > 0) return stored;
-      }
+    // Only generate for modalities that don't have an active trade
+    const existingModalities = new Set(
+      existingTrades
+        .filter(t => {
+          const status = (t as any).status as string | undefined;
+          return !status || status === 'Open' || status === 'active' || status === 'open';
+        })
+        .map(t => t.modality)
+    );
 
-      const trades: AITrade[] = [];
-      for (const modality of MODALITIES) {
-        try {
-          const trade = await generateAITradeForModality(modality, investmentPerModality);
-          if (trade) trades.push(trade);
-        } catch (err) {
-          console.error(`Failed to generate trade for ${modality}:`, err);
-          // Skip failed modality — don't abort the whole generation
+    const totalCapital = getTotalCapital() ?? 1000;
+    const investmentPerModality = Math.max(totalCapital * 0.1, 100);
+
+    const newTrades: AITrade[] = [];
+
+    for (const modality of MODALITIES) {
+      if (existingModalities.has(modality)) continue;
+
+      try {
+        const trade = await generateAITradeForModality(modality, investmentPerModality);
+        if (trade) {
+          newTrades.push(trade);
         }
+      } catch {
+        // non-fatal — skip this modality
       }
+    }
 
-      if (trades.length === 0) {
-        throw new Error('Failed to generate any AI trades. Please check your connection.');
-      }
+    if (newTrades.length === 0) return existingTrades;
 
-      // Always persist trades to localStorage first — before any order placement
-      saveTrades(trades);
+    const allTrades = [...existingTrades, ...newTrades];
+    saveTrades(allTrades);
 
-      // Place live orders asynchronously if BOTH global live trading AND per-modality toggle are ON
-      // Each order has an independent 10-second timeout and never blocks trade persistence
-      if (isLiveTradingEnabled()) {
-        const modalityLiveOrders = getModalityLiveOrders();
-        for (const trade of trades) {
-          const modalityEnabled = modalityLiveOrders[trade.modality] === true;
-          if (modalityEnabled) {
-            placeAITradeOrders(trade).catch((err) => {
-              const msg = err instanceof Error ? err.message : String(err);
-              console.error(`AI trade order placement error for ${trade.symbol}:`, msg);
-            });
-          }
-        }
-      }
+    // Place live orders asynchronously — never blocks trade persistence
+    for (const trade of newTrades) {
+      placeLiveOrdersForTrade(trade).catch(() => {
+        // non-fatal
+      });
+    }
 
-      return trades;
-    },
-    staleTime: Infinity, // trades persist until explicitly closed — no time-based staleness
+    return allTrades;
+  }, [getTrades, saveTrades, checkAndResetDaily]);
+
+  const query = useQuery({
+    queryKey: ['ai-trades'],
+    queryFn: generateTrades,
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    retry: 2,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
+
+  const regenerateForModality = useCallback(
+    async (modality: TradingModality): Promise<void> => {
+      const existingTrades = getTrades();
+      const filtered = existingTrades.filter(t => t.modality !== modality);
+
+      const totalCapital = getTotalCapital() ?? 1000;
+      const investmentPerModality = Math.max(totalCapital * 0.1, 100);
+
+      try {
+        const newTrade = await generateAITradeForModality(modality, investmentPerModality);
+        if (newTrade) {
+          const updated = [...filtered, newTrade];
+          saveTrades(updated);
+          placeLiveOrdersForTrade(newTrade).catch(() => {
+            // non-fatal
+          });
+        }
+      } catch {
+        // non-fatal
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['ai-trades'] });
+    },
+    [getTrades, saveTrades, queryClient]
+  );
+
+  return {
+    ...query,
+    regenerateForModality,
+  };
 }

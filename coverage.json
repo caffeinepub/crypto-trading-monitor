@@ -1,74 +1,63 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T03:52:22.522Z",
+  "generatedAt": "2026-02-25T04:24:13.223Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 5,
+    "total": 4,
+    "implemented": 4,
     "items": [
       {
-        "id": "REQ-113",
-        "summary": "On application load, check whether Binance credentials are present in localStorage (using hasCredentials() from binanceAuth.ts). If credentials are found, automatically trigger an import of the user's open positions from Binance USD-M Futures (via binancePositionService.ts / the existing getOpenPositions function) and merge them into the positions list managed by usePositionStorage, skipping any symbol already tracked. Display a non-blocking toast notification indicating how many positions were imported (e.g., 'Auto-imported 3 positions from Binance') or an error message if the import fails. This auto-import must run once per app session on mount, not on every re-render.",
+        "id": "REQ-118",
+        "summary": "Audit and fix the TP/SL order execution logic in useAITradeMonitoring.ts so that when a live AI trade's price crosses TP1, TP2, TP3, or the effective stop-loss, the corresponding real Binance order actions are triggered. Specifically: (1) When TP1 is crossed and tp1Executed is false — mark tp1Executed = true, cancel the original STOP_MARKET order via cancelOrder(), place a new STOP_MARKET at the entry price (breakeven), and persist the updated effectiveSL and riskManagementStep ('breakeven') to localStorage under 'ai_daily_trades'. (2) When TP2 is crossed and tp2Executed is false — mark tp2Executed = true, cancel the current STOP_MARKET order, place a new STOP_MARKET at the TP1 price (trailing), and persist effectiveSL and riskManagementStep ('trailing'). (3) When TP3 is crossed and tp3Executed is false — mark tp3Executed = true, place a MARKET close order for the full position quantity on the opposite side, record the closed trade in AI trade history with full TP3 profit, set status to 'TP Hit', and trigger auto-regeneration for that modality. (4) When the effective SL is crossed — place a MARKET close order on the opposite side, record the trade as 'SL Hit' in history, and trigger auto-regeneration. All Binance order calls must use binanceOrderService.ts and only fire when BOTH isLiveTradingEnabled() returns true AND getModalityLiveOrders()[trade.modality] is true. Each call must be individually wrapped in try/catch with a 10-second Promise.race timeout. If an order call fails, log the error, show a toast (e.g., 'TP1 order update failed — SL not moved to breakeven'), and continue updating the local trade state regardless.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/App.tsx"
+          "frontend/src/hooks/useAITradeMonitoring.ts",
+          "frontend/src/services/binanceOrderService.ts"
         ],
         "matchedFiles": [
-          "frontend/src/App.tsx"
+          "frontend/src/hooks/useAITradeMonitoring.ts",
+          "frontend/src/services/binanceOrderService.ts"
         ]
       },
       {
-        "id": "REQ-114",
-        "summary": "Update the Settings onboarding flow so that when the user saves Binance credentials for the first time (in BinanceCredentialsPanel.tsx) and both the API key and secret are non-empty, immediately trigger an automatic position import from Binance after the credentials are saved — without requiring the user to navigate to the Dashboard tab and click 'Import from Binance'. After the import completes, show a toast (e.g., 'Credentials saved — imported N positions from Binance') and switch the active tab to 'Dashboard' so the user can see their positions right away.",
+        "id": "REQ-119",
+        "summary": "Implement Accept and Reject functionality for AI take-profit recommendation suggestions displayed in the 'AI Insights' tab (AIInsightsTab.tsx) via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on a TP adjustment suggestion for a monitored position: (1) If live trading mode is ON and credentials are present, call placeTakeProfitMarketOrder() from binanceOrderService.ts with the suggested TP price and the appropriate position quantity and side, wrapped in try/catch with a 10-second timeout; show a toast 'TP order placed on Binance: {price}' on success or 'TP order failed: {error}' on failure. (2) Regardless of live trading mode, update the position's stored TP level(s) in localStorage (under the 'positions' key) with the newly accepted TP price, so the PositionCard and PositionDashboard reflect the updated target immediately. (3) Record the accepted suggestion in the adjustment history stored in localStorage (using the existing AdjustmentHistoryRecord type from frontend/src/types/adjustment.ts) with outcome 'accepted'. When the user clicks 'Reject' on a TP adjustment suggestion: (1) Do not place any order. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'. The accept/reject callbacks must be wired from AIInsightsTab.tsx down to AdjustmentSuggestionCard.tsx via props, using the existing onAccept and onDismiss prop signatures already defined on the component.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/BinanceCredentialsPanel.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/AIInsightsTab.tsx",
+          "frontend/src/hooks/usePositionStorage.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/BinanceCredentialsPanel.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/AIInsightsTab.tsx",
+          "frontend/src/hooks/usePositionStorage.ts"
         ]
       },
       {
-        "id": "REQ-115",
-        "summary": "Add a periodic background sync that refreshes the position list from Binance every 60 seconds when credentials are present (hasCredentials() returns true) and Live Trading mode is ON (isLiveTradingEnabled() returns true). On each sync cycle, call getOpenPositions() and merge any new positions into usePositionStorage (skip existing symbols). Remove from the local list any position whose symbol no longer appears in the Binance response (i.e., it has been closed on the exchange). Do not show a toast on routine syncs — only show a toast if new positions are added or existing ones are removed.",
+        "id": "REQ-120",
+        "summary": "Implement Accept and Reject functionality for AI stop-loss adjustment suggestions displayed in the 'AI Insights' tab via the AdjustmentSuggestionCard component. When the user clicks 'Accept' on an SL adjustment suggestion: (1) If live trading mode is ON and credentials are present, cancel the existing STOP_MARKET order for the position (using the stored Binance order ID if available, otherwise call getOpenOrders() to locate it) and place a new STOP_MARKET order at the suggested SL price with the appropriate quantity and side, both calls wrapped in try/catch with a 10-second timeout each; show toasts for success/failure of each step individually. (2) Regardless of live trading mode, update the position's stored stopLoss price in localStorage (under the 'positions' key) with the newly accepted SL price immediately. (3) Record the accepted suggestion in adjustment history with outcome 'accepted'. When the user clicks 'Reject' on an SL adjustment suggestion: (1) Do not place or cancel any orders. (2) Dismiss the suggestion card from the UI. (3) Record the rejection in adjustment history with outcome 'dismissed'.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/App.tsx"
+          "frontend/src/components/AIInsightsTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/App.tsx"
+          "frontend/src/components/AIInsightsTab.tsx"
         ]
       },
       {
-        "id": "REQ-116",
-        "summary": "Update the Dashboard tab (DashboardTab.tsx) to display a prominent onboarding banner when no Binance credentials are configured (hasCredentials() returns false). The banner must clearly instruct the user to open Settings (gear icon) and enter their Binance API Key and Secret to get started. Include a direct 'Open Settings' button inside the banner that opens the SettingsDialog immediately. The banner must disappear as soon as credentials are saved, reactively responding to the 'credential-change' custom DOM event without requiring a page reload.",
+        "id": "REQ-121",
+        "summary": "Ensure the AdjustmentSuggestionCard component (frontend/src/components/AdjustmentSuggestionCard.tsx) and its rendering inside AIInsightsTab.tsx (frontend/src/components/AIInsightsTab.tsx) correctly wire the onAccept and onDismiss callbacks. Audit the current implementation: (1) Verify that AIInsightsTab.tsx passes functional onAccept and onDismiss handler props to each AdjustmentSuggestionCard — these must not be undefined, no-ops, or missing. (2) Ensure the 'Accept' and 'Reject'/'Dismiss' buttons inside AdjustmentSuggestionCard call these props when clicked, with the suggestion object passed as the argument. (3) If the component currently uses a local dismiss-only state without calling onAccept, refactor it so that the parent (AIInsightsTab) controls the accepted/dismissed state via the callbacks and removes the suggestion from its rendered list on both accept and dismiss. (4) The suggestion cards must disappear from the UI immediately after accept or reject is clicked, with no stale card lingering.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/DashboardTab.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/AdjustmentSuggestionCard.tsx",
+          "frontend/src/components/AIInsightsTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/DashboardTab.tsx",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-117",
-        "summary": "Update the AI Daily Trades tab to automatically use the user's Binance account balance as the total capital value when credentials are present. On app load (or after credentials are saved), fetch the account's available balance from the Binance USD-M Futures account endpoint (https://fapi.binance.com/fapi/v2/account) using authenticatedFetch from binanceAuth.ts. Extract the totalWalletBalance field and, if the stored total_capital in localStorage is unset or zero, automatically set it via totalCapitalStorage to the fetched wallet balance. If the stored total_capital already has a user-defined value, do not overwrite it — only pre-fill when no value exists. Show a toast 'Total capital set from Binance account: $X' when auto-filled.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/utils/totalCapitalStorage.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/utils/totalCapitalStorage.ts"
+          "frontend/src/components/AdjustmentSuggestionCard.tsx",
+          "frontend/src/components/AIInsightsTab.tsx"
         ]
       }
     ]
@@ -79,9 +68,16 @@
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
-    "frontend/src/components/BinanceCredentialsPanel.tsx",
-    "frontend/src/components/DashboardTab.tsx",
-    "frontend/src/utils/totalCapitalStorage.ts",
+    "frontend/src/components/AIDailyTradesSection.tsx",
+    "frontend/src/components/AIInsightsTab.tsx",
+    "frontend/src/components/AdjustmentSuggestionCard.tsx",
+    "frontend/src/components/PositionCard.tsx",
+    "frontend/src/hooks/useAITradeGeneration.ts",
+    "frontend/src/hooks/useAITradeMonitoring.ts",
+    "frontend/src/hooks/useAITradeStorage.ts",
+    "frontend/src/hooks/usePositionStorage.ts",
+    "frontend/src/services/binanceOrderService.ts",
+    "frontend/src/utils/aiTradeHistoryStorage.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

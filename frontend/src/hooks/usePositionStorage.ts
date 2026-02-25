@@ -1,176 +1,179 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Position } from '../types/position';
-import { toast } from 'sonner';
-import { isLiveTradingEnabled, getCredentials } from '../utils/liveTradingStorage';
+import { useState, useCallback } from 'react';
+import { Position } from '@/types/position';
 import {
   placeMarketOrder,
-  placeTakeProfitOrder,
+  placeTakeProfitMarketOrder,
   placeStopLossOrder,
   OrderParams,
-} from '../services/binanceOrderService';
+} from '@/services/binanceOrderService';
+import { getCredentials } from '@/utils/liveTradingStorage';
 
-const POSITIONS_KEY = 'tracked_positions';
+const POSITIONS_KEY = 'positions';
 
-// Named constant for per-order timeout
-const ORDER_CALL_TIMEOUT_MS = 10000;
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`TIMEOUT:${label}`)), ms)
-    ),
-  ]);
-}
-
-function loadPositions(): Position[] {
+export function getPositionsFromStorage(): Position[] {
   try {
     const raw = localStorage.getItem(POSITIONS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Position[];
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function savePositions(positions: Position[]): void {
-  try {
-    localStorage.setItem(POSITIONS_KEY, JSON.stringify(positions));
-  } catch {
-    // Ignore storage errors
-  }
+export function savePositionsToStorage(positions: Position[]): void {
+  localStorage.setItem(POSITIONS_KEY, JSON.stringify(positions));
+  window.dispatchEvent(new CustomEvent('positions-changed'));
+}
+
+export function updatePositionInStorage(
+  positionId: string,
+  updates: Partial<Position>
+): void {
+  const positions = getPositionsFromStorage();
+  const idx = positions.findIndex(p => p.id === positionId);
+  if (idx === -1) return;
+  positions[idx] = { ...positions[idx], ...updates };
+  savePositionsToStorage(positions);
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
+    ),
+  ]);
 }
 
 export function usePositionStorage() {
-  const [positions, setPositions] = useState<Position[]>(() => loadPositions());
+  const [positions, setPositions] = useState<Position[]>(() =>
+    getPositionsFromStorage()
+  );
 
-  // Use a ref for the storage event handler to avoid re-registering on every render
-  const storageHandlerRef = useRef<((e: StorageEvent) => void) | null>(null);
+  const refreshPositions = useCallback(() => {
+    setPositions(getPositionsFromStorage());
+  }, []);
 
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === POSITIONS_KEY) {
-        setPositions(loadPositions());
-      }
-    };
-    storageHandlerRef.current = handler;
+  const addPosition = useCallback(
+    async (position: Position): Promise<void> => {
+      const credentials = getCredentials();
+      const current = getPositionsFromStorage();
+      const updated = [...current, position];
+      savePositionsToStorage(updated);
+      setPositions(updated);
 
-    window.addEventListener('storage', handler);
-    return () => {
-      window.removeEventListener('storage', handler);
-    };
-  }, []); // Empty dependency array — register once only
+      if (credentials) {
+        // Determine close side from positionType field
+        const posType = (position as any).positionType as string | undefined;
+        const legacyType = (position as any).type as string | undefined;
+        const isLong = posType === 'Long' || legacyType === 'Long';
+        const closeSide: 'BUY' | 'SELL' = isLong ? 'SELL' : 'BUY';
 
-  const addPosition = useCallback(async (position: Position) => {
-    // Always save to localStorage first — order placement never blocks persistence
-    const updated = [...loadPositions(), position];
-    savePositions(updated);
-    setPositions(updated);
+        // Compute quantity from totalExposure / entryPrice if quantity not present
+        const qty: number =
+          (position as any).quantity ??
+          ((position as any).totalExposure && (position as any).entryPrice
+            ? (position as any).totalExposure / (position as any).entryPrice
+            : 0);
 
-    // Fire-and-forget live order placement if live trading is active
-    if (!isLiveTradingEnabled()) return;
+        if (qty > 0) {
+          const orderBase: OrderParams = {
+            symbol: position.symbol,
+            side: closeSide,
+            quantity: qty,
+            credentials,
+          };
 
-    const creds = getCredentials();
-    if (!creds) {
-      toast.warning('Live Trading ativo mas sem credenciais — posição salva localmente apenas.');
-      return;
-    }
+          if (position.takeProfitLevels?.length) {
+            for (const tp of position.takeProfitLevels) {
+              try {
+                await withTimeout(
+                  placeTakeProfitMarketOrder({
+                    ...orderBase,
+                    stopPrice: tp.price,
+                  }),
+                  10000
+                );
+              } catch {
+                // individual TP order failure is non-fatal
+              }
+            }
+          }
 
-    // Derive quantity from totalExposure / entryPrice (number of contracts)
-    const quantity = parseFloat((position.totalExposure / position.entryPrice).toFixed(3));
-    const side: 'BUY' | 'SELL' = position.positionType === 'Long' ? 'BUY' : 'SELL';
-    const closeSide: 'BUY' | 'SELL' = position.positionType === 'Long' ? 'SELL' : 'BUY';
-    const symbol = position.symbol.replace('/', '').replace('-', '');
-
-    // Entry order — individual try/catch with 10-second timeout
-    const entryParams: OrderParams = { symbol, side, quantity, credentials: creds };
-    try {
-      await withTimeout(
-        placeMarketOrder(entryParams),
-        ORDER_CALL_TIMEOUT_MS,
-        'entry'
-      );
-      toast.success(`Ordem de entrada enviada à Binance: ${symbol}`);
-    } catch (err: unknown) {
-      const isTimeout = err instanceof Error && err.message.startsWith('TIMEOUT:');
-      if (isTimeout) {
-        toast.warning(`Ordem de entrada expirou — posição ${symbol} salva localmente apenas.`);
-      } else {
-        toast.error(`Falha na ordem de entrada ${symbol}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-      }
-    }
-
-    // TP orders — one per TP level, each with individual try/catch
-    for (const tp of position.takeProfitLevels) {
-      const tpParams: OrderParams = {
-        symbol,
-        side: closeSide,
-        quantity,
-        credentials: creds,
-        stopPrice: tp.price,
-        reduceOnly: true,
-      };
-      try {
-        await withTimeout(
-          placeTakeProfitOrder(tpParams),
-          ORDER_CALL_TIMEOUT_MS,
-          `tp${tp.level}`
-        );
-      } catch (err: unknown) {
-        const isTimeout = err instanceof Error && err.message.startsWith('TIMEOUT:');
-        if (isTimeout) {
-          toast.warning(`Ordem TP${tp.level} expirou — ${symbol} sem TP${tp.level} na Binance.`);
-        } else {
-          toast.error(`Falha na ordem TP${tp.level} ${symbol}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+          if (position.stopLoss?.price) {
+            try {
+              await withTimeout(
+                placeStopLossOrder({
+                  ...orderBase,
+                  stopPrice: position.stopLoss.price,
+                }),
+                10000
+              );
+            } catch {
+              // SL order failure is non-fatal
+            }
+          }
         }
       }
-    }
+    },
+    []
+  );
 
-    // SL order — individual try/catch with 10-second timeout
-    const slParams: OrderParams = {
-      symbol,
-      side: closeSide,
-      quantity,
-      credentials: creds,
-      stopPrice: position.stopLoss.price,
-      reduceOnly: true,
-    };
-    try {
-      await withTimeout(
-        placeStopLossOrder(slParams),
-        ORDER_CALL_TIMEOUT_MS,
-        'sl'
-      );
-      toast.success(`Ordem SL enviada à Binance: ${symbol}`);
-    } catch (err: unknown) {
-      const isTimeout = err instanceof Error && err.message.startsWith('TIMEOUT:');
-      if (isTimeout) {
-        toast.warning(`Ordem SL expirou — ${symbol} sem SL na Binance.`);
-      } else {
-        toast.error(`Falha na ordem SL ${symbol}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+  const removePosition = useCallback(
+    async (positionId: string): Promise<void> => {
+      const current = getPositionsFromStorage();
+      const position = current.find(p => p.id === positionId);
+      const updated = current.filter(p => p.id !== positionId);
+      savePositionsToStorage(updated);
+      setPositions(updated);
+
+      if (position) {
+        const credentials = getCredentials();
+        if (credentials) {
+          const posType = (position as any).positionType as string | undefined;
+          const legacyType = (position as any).type as string | undefined;
+          const isLong = posType === 'Long' || legacyType === 'Long';
+          const closeSide: 'BUY' | 'SELL' = isLong ? 'SELL' : 'BUY';
+
+          const qty: number =
+            (position as any).quantity ??
+            ((position as any).totalExposure && (position as any).entryPrice
+              ? (position as any).totalExposure / (position as any).entryPrice
+              : 0);
+
+          if (qty > 0) {
+            try {
+              await withTimeout(
+                placeMarketOrder({
+                  symbol: position.symbol,
+                  side: closeSide,
+                  quantity: qty,
+                  credentials,
+                }),
+                10000
+              );
+            } catch {
+              // close order failure is non-fatal
+            }
+          }
+        }
       }
-    }
-  }, []);
+    },
+    []
+  );
 
-  const removePosition = useCallback((id: string) => {
-    const updated = loadPositions().filter((p) => p.id !== id);
-    savePositions(updated);
-    setPositions(updated);
-  }, []);
-
-  const updatePosition = useCallback((position: Position) => {
-    const current = loadPositions();
-    const updated = current.map((p) => (p.id === position.id ? position : p));
-    savePositions(updated);
-    setPositions(updated);
-  }, []);
+  const updatePosition = useCallback(
+    (positionId: string, updates: Partial<Position>): void => {
+      updatePositionInStorage(positionId, updates);
+      setPositions(getPositionsFromStorage());
+    },
+    []
+  );
 
   return {
     positions,
     addPosition,
     removePosition,
     updatePosition,
-    // Backward compatibility alias
-    deletePosition: removePosition,
+    refreshPositions,
   };
 }

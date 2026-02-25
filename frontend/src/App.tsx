@@ -20,6 +20,7 @@ import { fetchOpenPositions } from './services/binancePositionService';
 import { authenticatedFetch } from './utils/binanceAuth';
 import { getCredentials } from './utils/liveTradingStorage';
 import { getTotalCapital, setTotalCapital } from './utils/totalCapitalStorage';
+import { Position } from './types/position';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -50,7 +51,7 @@ export default function App() {
     positionsRef.current = positions;
   }, [positions]);
 
-  // ── REQ-113: Auto-import open positions on mount when credentials are present ──
+  // ── Auto-import open positions on mount when credentials are present ──
   useEffect(() => {
     if (autoImportRanRef.current) return;
     if (!hasCredentials()) return;
@@ -80,7 +81,7 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── REQ-117: Auto-fill total capital from Binance account balance on mount ──
+  // ── Auto-fill total capital from Binance account balance on mount ──
   useEffect(() => {
     if (autoCapitalRanRef.current) return;
     if (!hasCredentials()) return;
@@ -116,7 +117,7 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── REQ-114: Listen for 'trigger-dashboard-switch' to switch to Dashboard tab ──
+  // ── Listen for 'trigger-dashboard-switch' to switch to Dashboard tab ──
   useEffect(() => {
     const handler = () => {
       setActiveTab('dashboard');
@@ -125,7 +126,7 @@ export default function App() {
     return () => window.removeEventListener('trigger-dashboard-switch', handler);
   }, []);
 
-  // ── REQ-115: Periodic 60-second background sync when credentials + live trading are active ──
+  // ── Periodic 60-second background sync when credentials + live trading are active ──
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startSyncInterval = useCallback(() => {
@@ -151,9 +152,7 @@ export default function App() {
         const localPositions = positionsRef.current;
         const localSymbols = new Set(localPositions.map((p) => p.symbol));
 
-        // Find new positions to add
         const toAdd = binancePositions.filter((p) => !localSymbols.has(p.symbol));
-        // Find closed positions to remove (symbol no longer in Binance response)
         const toRemove = localPositions.filter((p) => !binanceSymbols.has(p.symbol));
 
         for (const pos of toAdd) {
@@ -175,7 +174,6 @@ export default function App() {
     }, 60_000);
   }, [addPosition, removePosition]);
 
-  // Start/stop sync interval based on credential and live trading changes
   useEffect(() => {
     startSyncInterval();
 
@@ -196,7 +194,7 @@ export default function App() {
     };
   }, [startSyncInterval]);
 
-  // ── REQ-117: Re-run capital auto-fill when credentials are saved for the first time ──
+  // ── Re-run capital auto-fill when credentials are saved for the first time ──
   useEffect(() => {
     const handleCredentialChange = () => {
       if (!hasCredentials()) return;
@@ -235,6 +233,11 @@ export default function App() {
   const handleOpenSettings = useCallback(() => {
     setSettingsOpen(true);
   }, []);
+
+  // Adapter: DashboardTab expects (position: Position) => void
+  const handleUpdatePositionFull = useCallback((position: Position) => {
+    updatePosition(position.id, position);
+  }, [updatePosition]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -283,7 +286,7 @@ export default function App() {
             positionsWithPrice={positionsWithPrice}
             onAddPosition={addPosition}
             onRemovePosition={removePosition}
-            onUpdatePosition={updatePosition}
+            onUpdatePosition={handleUpdatePositionFull}
             onOpenSettings={handleOpenSettings}
           />
         )}
@@ -293,10 +296,6 @@ export default function App() {
         {activeTab === 'ai-insights' && (
           <AIInsightsTab
             positions={positionsWithPrice}
-            onUpdatePosition={(id, updates) => {
-              const pos = positionsWithPrice.find((p) => p.id === id);
-              if (pos) updatePosition({ ...pos, ...updates } as typeof pos);
-            }}
             onTabChange={setActiveTab}
           />
         )}
@@ -327,7 +326,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* Settings Dialog — rendered outside stacking context */}
+      {/* Settings Dialog */}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <Toaster richColors position="top-right" />

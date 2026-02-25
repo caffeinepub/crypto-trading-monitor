@@ -1,264 +1,233 @@
-import { useState } from 'react';
-import { PositionWithPrice } from '../types/position';
-import { UserTradeRecord } from '../types/tradeHistory';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { TrendingUp, TrendingDown, Trash2, Target, Shield, ChevronDown, Sparkles } from 'lucide-react';
-import { TakeProfitRecommendations } from './TakeProfitRecommendations';
-import { StopLossRecommendations } from './StopLossRecommendations';
-import { SentimentGauge } from './SentimentGauge';
-import { TrendPredictionCard } from './TrendPredictionCard';
-import { AdjustmentSuggestionCard } from './AdjustmentSuggestionCard';
-import { TradeOutcomeModal } from './TradeOutcomeModal';
-import { PositionRecoveryCard } from './PositionRecoveryCard';
-import { useAdjustmentSuggestions } from '../hooks/useAdjustmentSuggestions';
-import { saveUserTrade } from '../utils/tradeHistoryStorage';
+import { Button } from '@/components/ui/button';
+import {
+  TrendingUp,
+  TrendingDown,
+  Target,
+  Shield,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
+import { PositionWithPrice } from '@/types/position';
+import { AdjustmentSuggestion } from '@/types/adjustment';
+import { UserTradeRecord } from '@/types/tradeHistory';
+import { AdjustmentSuggestionCard } from '@/components/AdjustmentSuggestionCard';
+import { TradeOutcomeModal } from '@/components/TradeOutcomeModal';
+import { saveUserTrade } from '@/utils/tradeHistoryStorage';
 
 interface PositionCardProps {
   position: PositionWithPrice;
   onDelete: () => void;
-  onUpdate: (id: string, updates: Partial<PositionWithPrice>) => void;
+  onUpdate?: (id: string, updates: Partial<PositionWithPrice>) => void;
 }
 
 export function PositionCard({ position, onDelete, onUpdate }: PositionCardProps) {
-  const [aiInsightsOpen, setAiInsightsOpen] = useState(false);
-  const [outcomeModalOpen, setOutcomeModalOpen] = useState(false);
-  const { data: allSuggestions } = useAdjustmentSuggestions([position]);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState(false);
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [suggestions, setSuggestions] = useState<AdjustmentSuggestion[]>([]);
 
-  const isProfit = position.pnlUSD >= 0;
-  const isNearTP = Math.abs(position.distanceToTP1) < 2;
-  const isNearSL = Math.abs(position.distanceToSL) < 2;
+  const isLong = position.positionType === 'Long';
+  const pnlUSD = position.pnlUSD ?? 0;
+  const pnlPercent = position.pnlPercent ?? 0;
+  const isProfit = pnlUSD >= 0;
 
-  const activeSuggestions = (allSuggestions || []).filter(
-    (s) => !dismissedSuggestions.has(`${s.positionId}-${s.type}-${s.timestamp}`)
-  );
-
-  const handleAcceptSuggestion = async (suggestion: any) => {
-    if (suggestion.type === 'stop-loss') {
-      onUpdate(position.id, {
-        stopLoss: {
-          ...position.stopLoss,
-          price: suggestion.proposedLevel,
-        },
-      });
-    } else if (suggestion.type === 'take-profit') {
-      const updatedLevels = [...position.takeProfitLevels];
-      if (updatedLevels[0]) {
-        updatedLevels[0] = {
-          ...updatedLevels[0],
-          price: suggestion.proposedLevel,
-        };
-      }
-      onUpdate(position.id, {
-        takeProfitLevels: updatedLevels,
-      });
-    }
-    setDismissedSuggestions(prev => new Set(prev).add(`${suggestion.positionId}-${suggestion.type}-${suggestion.timestamp}`));
-  };
-
-  const handleDismissSuggestion = (suggestionId: string) => {
-    setDismissedSuggestions(prev => new Set(prev).add(suggestionId));
+  const handleDismissSuggestion = (suggestion: AdjustmentSuggestion) => {
+    setSuggestions(prev => prev.filter(s => s !== suggestion));
   };
 
   const handleDeleteClick = () => {
-    setOutcomeModalOpen(true);
+    setShowOutcomeModal(true);
   };
 
   const handleOutcomeSave = (record: UserTradeRecord) => {
     saveUserTrade(record);
+    setShowOutcomeModal(false);
     onDelete();
   };
 
   const handleOutcomeClose = () => {
-    setOutcomeModalOpen(false);
-    // Still delete the position even if user cancels the outcome modal
+    setShowOutcomeModal(false);
     onDelete();
   };
 
-  const handleOutcomeCancel = () => {
-    setOutcomeModalOpen(false);
-    // Delete without saving history
-    onDelete();
-  };
+  const formatPrice = (price: number) =>
+    price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+
+  const formatPnl = (value: number) =>
+    `${value >= 0 ? '+' : ''}${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <>
-      <Card className={`shadow-xl border-2 transition-all relative overflow-hidden ${
-        isNearTP ? 'border-chart-1 shadow-chart-1/30 golden-glow' : 
-        isNearSL ? 'border-destructive shadow-destructive/30' : 
-        'border-primary/30 shadow-primary/10'
-      }`}>
-        {/* Chart Pattern Background */}
-        <div 
-          className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
-          style={{
-            backgroundImage: 'url(/assets/generated/chart-pattern-overlay.dim_800x600.png)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        />
-        
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-        
-        <div className="relative z-10">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <CardTitle className="text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                    {position.symbol}
-                  </CardTitle>
-                  <Badge 
-                    variant={position.positionType === 'Long' ? 'default' : 'destructive'} 
-                    className={`font-semibold ${position.positionType === 'Long' ? 'bg-primary hover:bg-primary/90' : ''}`}
-                  >
-                    {position.positionType === 'Long' ? (
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3 mr-1" />
-                    )}
-                    {position.positionType}
-                  </Badge>
-                  <Badge variant="outline" className="border-primary/50 text-primary">{position.leverage}x</Badge>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>Entry: <span className="text-primary font-medium">${position.entryPrice.toFixed(4)}</span></span>
-                  <span>•</span>
-                  <span>Current: <span className="text-accent font-medium">${position.currentPrice.toFixed(4)}</span></span>
-                </div>
-              </div>
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isLong ? (
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              )}
+              <span className="font-semibold text-sm">{position.symbol}</span>
+              <Badge variant={isLong ? 'default' : 'destructive'} className="text-xs">
+                {isLong ? 'Long' : 'Short'}
+              </Badge>
+              {position.leverage && (
+                <Badge variant="outline" className="text-xs">
+                  {position.leverage}x
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                className="h-7 w-7"
+                onClick={() => setExpanded(e => !e)}
+              >
+                {expanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive hover:text-destructive"
                 onClick={handleDeleteClick}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
-          </CardHeader>
+          </div>
+        </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* PnL Section */}
-            <div className={`p-4 rounded-lg border ${
-              isProfit 
-                ? 'bg-chart-1/10 border-chart-1/30' 
-                : 'bg-destructive/10 border-destructive/30'
-            }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Profit & Loss</span>
-                <Badge 
-                  variant={isProfit ? 'default' : 'destructive'} 
-                  className={`text-base font-bold ${isProfit ? 'bg-chart-1 hover:bg-chart-1/90' : ''}`}
+        <CardContent className="space-y-3">
+          {/* Price & Entry */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Preço Atual</p>
+              <p className="font-mono font-semibold">
+                ${formatPrice(position.currentPrice)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Entrada</p>
+              <p className="font-mono font-semibold">
+                ${formatPrice(position.entryPrice)}
+              </p>
+            </div>
+          </div>
+
+          {/* PnL */}
+          <div
+            className={`rounded-md p-2 text-sm ${
+              isProfit ? 'bg-green-500/10' : 'bg-red-500/10'
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">PnL</span>
+              <div className="text-right">
+                <span
+                  className={`font-semibold font-mono ${
+                    isProfit ? 'text-green-500' : 'text-red-500'
+                  }`}
                 >
-                  {isProfit ? '+' : ''}{position.pnlPercent.toFixed(2)}%
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-2xl font-bold ${isProfit ? 'text-chart-1' : 'text-destructive'}`}>
-                  {isProfit ? '+' : ''}{position.pnlUSD >= 0 ? '$' : '-$'}{Math.abs(position.pnlUSD).toFixed(2)}
+                  {formatPnl(pnlUSD)} USDT
                 </span>
-                <div className="text-right text-sm text-muted-foreground">
-                  <div>Investment: <span className="text-foreground font-medium">${position.investmentAmount.toFixed(2)}</span></div>
-                  <div>Exposure: <span className="text-primary font-medium">${position.totalExposure.toFixed(2)}</span></div>
-                </div>
+                <span
+                  className={`ml-2 text-xs ${
+                    isProfit ? 'text-green-500' : 'text-red-500'
+                  }`}
+                >
+                  ({formatPnl(pnlPercent)}%)
+                </span>
               </div>
             </div>
+          </div>
 
-            {/* AI Insights Section */}
-            <Collapsible open={aiInsightsOpen} onOpenChange={setAiInsightsOpen}>
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="w-full justify-between border-primary/30">
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    AI Insights & Analysis
-                  </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${aiInsightsOpen ? 'rotate-180' : ''}`} />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 pt-4">
-                {/* Adjustment Suggestions */}
-                {activeSuggestions.length > 0 && (
-                  <div className="space-y-2">
-                    {activeSuggestions.map((suggestion) => (
-                      <AdjustmentSuggestionCard
-                        key={`${suggestion.positionId}-${suggestion.type}-${suggestion.timestamp}`}
-                        suggestion={suggestion}
-                        onAccept={handleAcceptSuggestion}
-                        onDismiss={handleDismissSuggestion}
-                      />
-                    ))}
+          {expanded && (
+            <div className="space-y-3 pt-1">
+              {/* Take Profit Levels */}
+              {position.takeProfitLevels && position.takeProfitLevels.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1 mb-2">
+                    <Target className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-medium">Take Profit</span>
                   </div>
-                )}
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <SentimentGauge symbol={position.symbol} />
-                  <TrendPredictionCard symbol={position.symbol} />
+                  <div className="space-y-1">
+                    {position.takeProfitLevels.map((tp, i) => {
+                      // Only distanceToTP1 is guaranteed in PositionWithPrice
+                      const distance = i === 0 ? position.distanceToTP1 : undefined;
+                      return (
+                        <div
+                          key={i}
+                          className="flex justify-between items-center text-xs"
+                        >
+                          <span className="text-muted-foreground">TP{i + 1}</span>
+                          <span className="font-mono">${formatPrice(tp.price)}</span>
+                          {distance != null && (
+                            <span className="text-muted-foreground">
+                              {distance > 0 ? '+' : ''}{distance.toFixed(2)}%
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              )}
 
-            <Separator className="bg-primary/20" />
+              {/* Stop Loss */}
+              {position.stopLoss && (
+                <div>
+                  <div className="flex items-center gap-1 mb-2">
+                    <Shield className="h-3.5 w-3.5 text-destructive" />
+                    <span className="text-xs font-medium">Stop Loss</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">Preço</span>
+                    <span className="font-mono">${formatPrice(position.stopLoss.price)}</span>
+                    {position.distanceToSL != null && (
+                      <span className="text-muted-foreground">
+                        {position.distanceToSL.toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
-            {/* Take Profit Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-chart-1" />
-                <h3 className="font-semibold">Take Profit Levels</h3>
-                {isNearTP && (
-                  <Badge variant="default" className="bg-chart-1 hover:bg-chart-1/90">
-                    Near TP1!
-                  </Badge>
-                )}
-              </div>
-              <TakeProfitRecommendations
-                levels={position.takeProfitLevels}
-                currentPrice={position.currentPrice}
-                positionType={position.positionType}
-              />
+              {/* Adjustment Suggestions */}
+              {suggestions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Sugestões de Ajuste
+                  </p>
+                  {suggestions.map((s, i) => (
+                    <AdjustmentSuggestionCard
+                      key={i}
+                      suggestion={s}
+                      onDismiss={handleDismissSuggestion}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-
-            <Separator className="bg-primary/20" />
-
-            {/* Stop Loss Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Shield className="w-5 h-5 text-destructive" />
-                <h3 className="font-semibold">Stop Loss</h3>
-                {isNearSL && (
-                  <Badge variant="destructive">
-                    Near SL!
-                  </Badge>
-                )}
-              </div>
-              <StopLossRecommendations
-                stopLoss={position.stopLoss}
-                currentPrice={position.currentPrice}
-                positionType={position.positionType}
-              />
-            </div>
-
-            {/* Position Recovery Card — only visible when position is in loss */}
-            <PositionRecoveryCard position={position} />
-          </CardContent>
-        </div>
+          )}
+        </CardContent>
       </Card>
 
-      {/* Trade Outcome Modal */}
-      {outcomeModalOpen && (
-        <TradeOutcomeModal
-          isOpen={outcomeModalOpen}
-          onClose={handleOutcomeCancel}
-          position={position}
-          onSave={handleOutcomeSave}
-        />
-      )}
+      <TradeOutcomeModal
+        isOpen={showOutcomeModal}
+        onClose={handleOutcomeClose}
+        position={position}
+        onSave={handleOutcomeSave}
+      />
     </>
   );
 }
+
+export default PositionCard;
