@@ -29,21 +29,7 @@ export interface TickerPriceResponse {
   price: string;
 }
 
-export interface LeverageBracket {
-  bracket: number;
-  initialLeverage: number;
-  notionalCap: number;
-  notionalFloor: number;
-  maintMarginRatio: number;
-  cum: number;
-}
-
-export interface LeverageBracketResponse {
-  symbol: string;
-  brackets: LeverageBracket[];
-}
-
-/** Returns all USDT-M perpetual pair symbols as strings (used by PositionEntryForm / useBinancePairs) */
+/** Returns all USDT-M perpetual pair symbols as strings */
 export async function fetchPerpetualPairs(): Promise<string[]> {
   try {
     const response = await fetch(`${FAPI_V1}/exchangeInfo`);
@@ -59,7 +45,7 @@ export async function fetchPerpetualPairs(): Promise<string[]> {
   }
 }
 
-/** Fetch a single symbol's current price (used by usePositionMonitoring) */
+/** Fetch a single symbol's current price */
 export async function fetchCurrentPrice(symbol: string): Promise<number> {
   try {
     const response = await fetch(`${FAPI_V1}/ticker/price?symbol=${symbol}`);
@@ -72,21 +58,7 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
   }
 }
 
-/** Fetch live ticker price for a symbol — returns typed TickerPriceResponse */
-export async function fetchTickerPrice(symbol: string): Promise<TickerPriceResponse> {
-  const response = await fetch(`${FAPI_V1}/ticker/price?symbol=${symbol}`);
-  if (!response.ok) throw new Error(`Failed to fetch ticker price for ${symbol}`);
-  return response.json() as Promise<TickerPriceResponse>;
-}
-
-/** Fetch leverage bracket data for a symbol from Binance public endpoint */
-export async function fetchLeverageBracket(symbol: string): Promise<LeverageBracketResponse[]> {
-  const response = await fetch(`${FAPI_V1}/leverageBracket?symbol=${symbol}`);
-  if (!response.ok) throw new Error(`Failed to fetch leverage bracket for ${symbol}`);
-  return response.json() as Promise<LeverageBracketResponse[]>;
-}
-
-/** Fetch prices for multiple symbols at once (used by AI trade monitoring) */
+/** Fetch prices for multiple symbols at once */
 export async function fetchCurrentPrices(symbols?: string[]): Promise<BinancePrice[]> {
   try {
     const response = await fetch(`${FAPI_V1}/ticker/price`);
@@ -103,7 +75,7 @@ export async function fetchCurrentPrices(symbols?: string[]): Promise<BinancePri
   }
 }
 
-/** Fetch OHLCV klines and return structured BinanceKline objects */
+/** Fetch OHLCV klines */
 export async function fetchKlines(
   symbol: string,
   interval: string = '1h',
@@ -129,7 +101,7 @@ export async function fetchKlines(
   }
 }
 
-/** Convenience: extract close prices array from klines (used by TP/SL calculators) */
+/** Convenience: extract close prices array from klines */
 export function klinesToClosePrices(klines: BinanceKline[]): number[] {
   return klines.map((k) => k.close);
 }

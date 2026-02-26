@@ -89,10 +89,163 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface TransformationInput {
+    context: Uint8Array;
+    response: http_request_result;
+}
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
+export interface http_request_result {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
 export interface backendInterface {
+    cancelOrder(apiKey: string, _apiSecret: string, symbol: string, orderId: string): Promise<{
+        status: string;
+        message: string;
+    }>;
+    now(): Promise<bigint>;
+    placeLimitOrder(apiKey: string, _apiSecret: string, symbol: string, side: string, quantity: string, price: string): Promise<{
+        status: string;
+        message: string;
+    }>;
+    placeMarketOrder(apiKey: string, _apiSecret: string, symbol: string, side: string, quantity: string): Promise<{
+        status: string;
+        message: string;
+    }>;
+    placeStopMarketOrder(apiKey: string, _apiSecret: string, symbol: string, side: string, quantity: string, stopPrice: string): Promise<{
+        status: string;
+        message: string;
+    }>;
+    placeTakeProfitMarketOrder(apiKey: string, _apiSecret: string, symbol: string, side: string, quantity: string, stopPrice: string): Promise<{
+        status: string;
+        message: string;
+    }>;
+    transform(input: TransformationInput): Promise<TransformationOutput>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async cancelOrder(arg0: string, arg1: string, arg2: string, arg3: string): Promise<{
+        status: string;
+        message: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.cancelOrder(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.cancelOrder(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async now(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.now();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.now();
+            return result;
+        }
+    }
+    async placeLimitOrder(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<{
+        status: string;
+        message: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.placeLimitOrder(arg0, arg1, arg2, arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.placeLimitOrder(arg0, arg1, arg2, arg3, arg4, arg5);
+            return result;
+        }
+    }
+    async placeMarketOrder(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string): Promise<{
+        status: string;
+        message: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.placeMarketOrder(arg0, arg1, arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.placeMarketOrder(arg0, arg1, arg2, arg3, arg4);
+            return result;
+        }
+    }
+    async placeStopMarketOrder(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<{
+        status: string;
+        message: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.placeStopMarketOrder(arg0, arg1, arg2, arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.placeStopMarketOrder(arg0, arg1, arg2, arg3, arg4, arg5);
+            return result;
+        }
+    }
+    async placeTakeProfitMarketOrder(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<{
+        status: string;
+        message: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.placeTakeProfitMarketOrder(arg0, arg1, arg2, arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.placeTakeProfitMarketOrder(arg0, arg1, arg2, arg3, arg4, arg5);
+            return result;
+        }
+    }
+    async transform(arg0: TransformationInput): Promise<TransformationOutput> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.transform(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.transform(arg0);
+            return result;
+        }
+    }
 }
 export interface CreateActorOptions {
     agent?: Agent;

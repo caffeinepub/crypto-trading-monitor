@@ -1,6 +1,7 @@
-import { LayoutDashboard, Bot, Brain, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Terminal, Settings } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export type TabId = 'dashboard' | 'ai-daily-trades' | 'ai-insights' | 'risk-management';
+export type TabId = 'dashboard' | 'order-terminal' | 'settings';
 
 interface Tab {
   id: TabId;
@@ -9,26 +10,9 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: <LayoutDashboard className="w-4 h-4" />,
-  },
-  {
-    id: 'ai-daily-trades',
-    label: 'AI Daily Trades',
-    icon: <Bot className="w-4 h-4" />,
-  },
-  {
-    id: 'ai-insights',
-    label: 'AI Insights',
-    icon: <Brain className="w-4 h-4" />,
-  },
-  {
-    id: 'risk-management',
-    label: 'Risk Management',
-    icon: <ShieldCheck className="w-4 h-4" />,
-  },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+  { id: 'order-terminal', label: 'Order Terminal', icon: <Terminal className="h-4 w-4" /> },
+  { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
 ];
 
 interface TabNavigationProps {
@@ -38,27 +22,24 @@ interface TabNavigationProps {
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
   return (
-    <nav className="border-b border-primary/20 bg-card/70 backdrop-blur-md sticky top-[73px] z-40">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-1">
+    <nav className="sticky top-0 z-40 w-full border-b border-border/60 bg-card/95 backdrop-blur-sm">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`
-                  flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
-                  whitespace-nowrap transition-all duration-200 min-h-[40px]
-                  ${isActive
-                    ? 'bg-primary text-primary-foreground shadow-md golden-glow'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'
-                  }
-                `}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap',
+                  isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                )}
               >
                 {tab.icon}
                 <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             );
           })}
@@ -67,3 +48,5 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
     </nav>
   );
 }
+
+export default TabNavigation;

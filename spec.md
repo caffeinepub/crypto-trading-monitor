@@ -1,11 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the AI Daily Trades tab so that P&L values display correctly using live prices, and eliminate duplicate modality cards.
+**Goal:** Rebuild the entire application from scratch as a focused Binance USD-M Futures order terminal, with a Motoko backend canister acting as an authenticated HTTP outcall proxy for order placement, and a minimal React + TypeScript frontend with only three tabs: Dashboard, Order Terminal, and Settings.
 
 **Planned changes:**
-- In `AIDailyTradesSection.tsx`, ensure the live price fetch from `https://fapi.binance.com/fapi/v1/ticker/price` completes and returns a valid non-zero value before building enriched trade objects passed to `AITradeCard`; pass a loading flag when the price is not yet available.
-- In `AITradeCard.tsx`, guard against zero or undefined `currentPrice` before invoking the PnL calculation; display a loading indicator (spinner or `…`) when price is unavailable, and show correctly color-coded PnL (green/red) once a valid price is loaded.
-- In `useAITradeGeneration.ts` and `useAITradeStorage.ts`, audit and deduplicate the `ai_daily_trades` localStorage array so exactly four unique modality trades are stored (Scalping, Day Trading, Swing Trading, Trend Following); add a write-path guard that prevents inserting a second open trade for a modality that already has one.
-
-**User-visible outcome:** The AI Daily Trades tab shows exactly four unique modality cards, each displaying correct live P&L values (in USD and percentage) that update on each polling cycle, with a loading indicator shown while prices are being fetched.
+- Create a Motoko backend canister (`backend/main.mo`) that exposes `placeMarketOrder`, `placeLimitOrder`, `placeStopMarketOrder`, `placeTakeProfitMarketOrder`, and `cancelOrder` methods — each appending a timestamp, computing HMAC-SHA256 signature, and forwarding the request to Binance Futures API without persisting credentials
+- Build a fresh React + TypeScript frontend with three tabs: Dashboard, Order Terminal, and Settings — discarding all previous code
+- Implement `frontend/src/services/binanceProxyService.ts` that reads credentials from localStorage and delegates all authenticated order calls to the Motoko canister
+- Implement `frontend/src/utils/credentialsStorage.ts` for localStorage credential management with a `credential-change` DOM event dispatched on every write
+- Build `DashboardTab.tsx` showing imported open positions with live PnL polled every 5 seconds, an Import Positions button (proxy-authenticated), per-card Remove button, and an onboarding banner when credentials are absent
+- Build `OrderTerminalTab.tsx` with a perpetual pair selector (from Binance exchangeInfo), live price display, order type/side/quantity/price/stop-price inputs, and a Place Order button disabled when Live Trading mode is OFF
+- Build `SettingsTab.tsx` with API credential inputs, Save/Clear buttons, a Test Connection button (via proxy with 15-second timeout), and a Live Trading toggle with confirmation dialog
+- Apply a dark trading terminal aesthetic using Tailwind CSS with near-black background, gold/amber accents, green/red PnL colors, monospace fonts for numeric data, and a sticky header with credential status and live trading badge

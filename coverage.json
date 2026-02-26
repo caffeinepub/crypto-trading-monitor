@@ -1,59 +1,216 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T08:35:58.726Z",
+  "generatedAt": "2026-02-26T13:47:03.606Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 2,
+    "total": 8,
+    "implemented": 7,
     "items": [
       {
-        "id": "REQ-133",
-        "summary": "Fix the AI Daily Trades P&L calculation in AIDailyTradesSection.tsx so that the live current price fetched from https://fapi.binance.com/fapi/v1/ticker/price is reliably obtained before any PnL calculation runs. Audit the polling mechanism inside AIDailyTradesSection: ensure the price fetch completes and returns a non-zero, non-undefined value before buildng the enriched trade objects passed to AITradeCard. If the price is still loading (0 or undefined), pass a loading flag to AITradeCard instead of a zero price so PnL is not computed with an invalid baseline.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AIDailyTradesSection.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AIDailyTradesSection.tsx"
-        ]
-      },
-      {
-        "id": "REQ-134",
-        "summary": "Fix AITradeCard.tsx so that it guards against a zero or undefined currentPrice before calling the PnL calculation. Inside the card, check that currentPrice is a finite number greater than zero before invoking calculatePnl (or the equivalent function from pnlCalculations.ts). When currentPrice is not yet available, display a loading indicator (e.g., a spinner or '…') in the PnL display area. When currentPrice is valid, display the computed PnL in USD and percentage with correct color coding (green for profit, red for loss).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AITradeCard.tsx",
-          "frontend/src/components/AIDailyTradesSummary.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AITradeCard.tsx",
-          "frontend/src/components/AIDailyTradesSummary.tsx"
-        ]
-      },
-      {
-        "id": "REQ-135",
-        "summary": "Fix the duplicate 'Day Trading' modality card in the AI Daily Trades tab. Audit useAITradeGeneration.ts and useAITradeStorage.ts to ensure that exactly four unique modality trades are stored and rendered — one each for 'Scalping', 'Day Trading', 'Swing Trading', and 'Trend Following'. Detect and remove any duplicate entries with the same modality in the stored 'ai_daily_trades' localStorage array. Add a deduplication guard in the storage write path so that if a trade for a modality already exists with status 'Open', no second trade for that same modality is inserted.",
-        "status": "missing",
-        "plannedFiles": [
-          "frontend/src/hooks/useAITradeStorage.ts",
-          "frontend/src/hooks/useAITradeGeneration.ts"
-        ],
+        "id": "REQ-138",
+        "summary": "Implement a Motoko backend canister (backend/main.mo) on the Internet Computer that acts as an authenticated HTTP outcall proxy for Binance USD-M Futures order placement. The canister must expose the following public update methods: (1) placeMarketOrder(apiKey: Text, apiSecret: Text, symbol: Text, side: Text, quantity: Text) — signs and forwards a POST to https://fapi.binance.com/fapi/v1/order with type=MARKET; (2) placeLimitOrder(apiKey: Text, apiSecret: Text, symbol: Text, side: Text, quantity: Text, price: Text) — signs and forwards a POST with type=LIMIT and timeInForce=GTC; (3) placeStopMarketOrder(apiKey: Text, apiSecret: Text, symbol: Text, side: Text, quantity: Text, stopPrice: Text) — signs and forwards with type=STOP_MARKET; (4) placeTakeProfitMarketOrder(apiKey: Text, apiSecret: Text, symbol: Text, side: Text, quantity: Text, stopPrice: Text) — signs and forwards with type=TAKE_PROFIT_MARKET; (5) cancelOrder(apiKey: Text, apiSecret: Text, symbol: Text, orderId: Text) — signs and forwards a DELETE to https://fapi.binance.com/fapi/v1/order. Each method must: append a server-side timestamp parameter, compute the HMAC-SHA256 signature over the full query string using the provided apiSecret, attach the X-MBX-APIKEY header with the apiKey, perform the HTTP outcall, and return the raw JSON response body as Text or a typed error message. The canister must never persist API keys or secrets — they are passed per-call only.",
+        "status": "unknown",
+        "plannedFiles": [],
         "matchedFiles": []
+      },
+      {
+        "id": "REQ-139",
+        "summary": "Build the complete React + TypeScript frontend from scratch with a minimal, focused scope. The application must have exactly three views accessible via a tab navigation bar: (1) Dashboard tab — displays open positions imported from Binance with real-time PnL (polled every 5 seconds from https://fapi.binance.com/fapi/v1/ticker/price); (2) Order Terminal tab — a form to place new orders (Market, Limit, Stop Market, Take Profit Market) for any Binance USD-M Futures perpetual pair selected from a dropdown populated via https://fapi.binance.com/fapi/v1/exchangeInfo; (3) Settings tab — Binance API Key and Secret input fields (secret masked), Save/Clear buttons, a Test Connection button that calls https://fapi.binance.com/fapi/v2/account via the Motoko proxy, and a Live Trading mode toggle. All localStorage keys from the previous version must be ignored — start with no persisted data assumptions.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/App.tsx",
+          "frontend/src/components/TabNavigation.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/App.tsx",
+          "frontend/src/components/TabNavigation.tsx"
+        ]
+      },
+      {
+        "id": "REQ-140",
+        "summary": "Create a frontend service module (frontend/src/services/binanceProxyService.ts) that calls the Motoko backend canister actor (via the useActor hook) instead of making direct authenticated fetch calls to Binance. Expose the same function signatures as the previous binanceOrderService.ts: placeMarketOrder, placeLimitOrder, placeStopMarketOrder, placeTakeProfitMarketOrder, and cancelOrder. Each function must retrieve the stored API Key and Secret from localStorage (keys: 'binance_api_key' and 'binance_api_secret'), pass them as parameters to the corresponding canister method, and return the parsed JSON response or throw a typed error. If credentials are missing, throw a descriptive error before invoking the canister.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/services/binanceProxyService.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/services/binanceProxyService.ts"
+        ]
+      },
+      {
+        "id": "REQ-141",
+        "summary": "Create a credentials utility module (frontend/src/utils/credentialsStorage.ts) that manages Binance API credentials in localStorage. Expose: (1) saveCredentials(apiKey: string, apiSecret: string) — saves both values under keys 'binance_api_key' and 'binance_api_secret' and dispatches a custom DOM event 'credential-change'; (2) getCredentials() — returns { apiKey, apiSecret } from localStorage; (3) clearCredentials() — removes both keys and dispatches 'credential-change'; (4) hasCredentials() — returns true only if both keys are present and non-empty. The 'credential-change' event must be dispatched synchronously after every write so dependent components update reactively without a page reload.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/credentialsStorage.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/credentialsStorage.ts"
+        ]
+      },
+      {
+        "id": "REQ-142",
+        "summary": "Implement the Order Terminal tab (frontend/src/components/OrderTerminalTab.tsx) as the primary order placement interface. The tab must contain: (1) an asset selector dropdown/autocomplete populated with all perpetual pairs from https://fapi.binance.com/fapi/v1/exchangeInfo filtered by contractType === 'PERPETUAL', with a loading state while fetching and an error message on failure; (2) a live current price display for the selected symbol fetched from https://fapi.binance.com/fapi/v1/ticker/price, refreshed every 5 seconds; (3) order type selector: Market, Limit, Stop Market, Take Profit Market; (4) side selector: Buy (Long) / Sell (Short); (5) quantity input (numeric, required); (6) price input (shown only for Limit orders); (7) stop price input (shown for Stop Market and Take Profit Market orders); (8) a 'Place Order' button that is disabled when Live Trading mode is OFF — show a tooltip 'Enable Live Trading in Settings to place real orders'; (9) when Live Trading mode is ON and credentials are present, clicking 'Place Order' calls the appropriate function from binanceProxyService.ts, shows a loading state on the button, and displays a success toast with the order ID or an error toast on failure. All order calls must be wrapped in try/catch with a 15-second timeout.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/OrderTerminalTab.tsx",
+          "frontend/src/hooks/useBinancePairs.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/OrderTerminalTab.tsx",
+          "frontend/src/hooks/useBinancePairs.ts"
+        ]
+      },
+      {
+        "id": "REQ-143",
+        "summary": "Implement the Dashboard tab (frontend/src/components/DashboardTab.tsx) that displays the user's open positions imported from Binance. The tab must include: (1) an 'Import Positions' button — visible only when hasCredentials() returns true — that calls https://fapi.binance.com/fapi/v2/positionRisk via the Motoko proxy canister, filters for entries where positionAmt is non-zero, maps them to a simple local Position type (symbol, side as Long/Short based on positionAmt sign, entryPrice, quantity, leverage), and stores them in localStorage under 'positions'; (2) a position list that renders each position as a card showing symbol, side badge (green for Long, red for Short), entry price, quantity, leverage, current price fetched from https://fapi.binance.com/fapi/v1/ticker/price, and unrealized PnL in USD and percentage — updated every 5 seconds; (3) an onboarding banner when hasCredentials() returns false instructing the user to go to Settings and enter their API credentials; (4) a 'Remove' button on each position card to delete it from the local list. Live prices must be fetched directly from the browser (public endpoint, no proxy needed) — only authenticated calls go through the Motoko proxy.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/DashboardTab.tsx",
+          "frontend/src/types/position.ts",
+          "frontend/src/utils/pnlCalculations.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/DashboardTab.tsx",
+          "frontend/src/types/position.ts",
+          "frontend/src/utils/pnlCalculations.ts"
+        ]
+      },
+      {
+        "id": "REQ-144",
+        "summary": "Implement the Settings tab (frontend/src/components/SettingsTab.tsx) with three sections: (1) API Credentials — text input for API Key, password-type input for API Secret, a 'Save' button that calls saveCredentials() and shows a success toast, a 'Clear' button that calls clearCredentials(), and a warning notice 'Your API keys are stored locally in your browser and are only sent to the Internet Computer canister for signing — never to any third-party server'; (2) Connection Test — a 'Test Connection' button that calls the Motoko proxy canister's account endpoint (https://fapi.binance.com/fapi/v2/account) with the stored credentials, shows a 'Connected ✓' badge on success or 'Invalid credentials ✗' on failure, uses a 15-second timeout, and never leaves the UI in a frozen loading state (always resets loading state in a finally block); (3) Live Trading Mode — a toggle switch labeled 'Live Trading', defaulting to OFF, stored in localStorage under 'live_trading_enabled', with a confirmation dialog before enabling ('Warning: enabling this will send real orders to Binance Futures') and an amber banner visible in the app header whenever Live Trading is active.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SettingsTab.tsx",
+          "frontend/src/components/LiveTradingBanner.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SettingsTab.tsx",
+          "frontend/src/components/LiveTradingBanner.tsx"
+        ]
+      },
+      {
+        "id": "REQ-145",
+        "summary": "Design the application with a dark, professional trading terminal aesthetic using Tailwind CSS. Use a near-black background (#0a0a0f or equivalent), gold/amber accent colors (consistent with oklch CSS variables) for interactive elements, buttons, and badges, and green/red color coding exclusively for profit/loss indicators. The header must display the app name 'Binance Order Terminal', a credential status indicator ('API Connected' in green or 'No API Key' in amber), a live trading mode amber badge when active, and the tab navigation bar. The layout must be responsive and work on both desktop and mobile screens. Typography must be clean and readable — use a monospace or semi-monospace font for price and numeric data.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/index.css",
+          "frontend/src/App.tsx",
+          "frontend/src/components/CredentialStatusIndicator.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/index.css",
+          "frontend/src/App.tsx",
+          "frontend/src/components/CredentialStatusIndicator.tsx"
+        ]
       }
     ]
   },
   "changedFiles": [
+    "backend/http-outcalls/outcall.mo",
+    "backend/main.mo",
     "build-request.json",
+    "build-template/README.md",
+    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/App.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
     "frontend/src/components/AIDailyTradesSection.tsx",
     "frontend/src/components/AIDailyTradesSummary.tsx",
+    "frontend/src/components/AIDailyTradesTab.tsx",
+    "frontend/src/components/AIInsightsTab.tsx",
     "frontend/src/components/AITradeCard.tsx",
+    "frontend/src/components/AdjustmentSuggestionCard.tsx",
+    "frontend/src/components/BinanceCredentialsPanel.tsx",
+    "frontend/src/components/CredentialStatusIndicator.tsx",
+    "frontend/src/components/DashboardTab.tsx",
+    "frontend/src/components/ExposureChart.tsx",
+    "frontend/src/components/InstallButton.tsx",
+    "frontend/src/components/InstallInstructionsModal.tsx",
+    "frontend/src/components/LiveRiskMetricsCard.tsx",
+    "frontend/src/components/LiveTradingBanner.tsx",
+    "frontend/src/components/LiveTradingToggle.tsx",
+    "frontend/src/components/OrderTerminalTab.tsx",
+    "frontend/src/components/PerformanceComparisonPanel.tsx",
+    "frontend/src/components/PortfolioExposureDashboard.tsx",
+    "frontend/src/components/PositionCard.tsx",
+    "frontend/src/components/PositionDashboard.tsx",
+    "frontend/src/components/PositionEntryForm.tsx",
+    "frontend/src/components/PositionRecoveryCard.tsx",
+    "frontend/src/components/PositionSizeCalculator.tsx",
+    "frontend/src/components/RiskManagementTab.tsx",
+    "frontend/src/components/ScenarioSimulator.tsx",
+    "frontend/src/components/SentimentGauge.tsx",
+    "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/components/SettingsTab.tsx",
+    "frontend/src/components/StopLossRecommendations.tsx",
+    "frontend/src/components/TabNavigation.tsx",
+    "frontend/src/components/TakeProfitRecommendations.tsx",
+    "frontend/src/components/TotalCapitalInput.tsx",
+    "frontend/src/components/TotalCapitalSummary.tsx",
+    "frontend/src/components/TradeOutcomeModal.tsx",
+    "frontend/src/components/TrendPredictionCard.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useAITradeGeneration.ts",
+    "frontend/src/hooks/useAITradeMonitoring.ts",
+    "frontend/src/hooks/useAITradeStorage.ts",
+    "frontend/src/hooks/useAdjustmentSuggestions.ts",
+    "frontend/src/hooks/useBinancePairs.ts",
+    "frontend/src/hooks/useLiveTradingMode.ts",
+    "frontend/src/hooks/usePWAInstall.ts",
+    "frontend/src/hooks/usePortfolioExposure.ts",
+    "frontend/src/hooks/usePositionMonitoring.ts",
+    "frontend/src/hooks/usePositionStorage.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/hooks/useSentimentAnalysis.ts",
+    "frontend/src/hooks/useTrendPrediction.ts",
+    "frontend/src/index.css",
+    "frontend/src/services/binanceApi.ts",
+    "frontend/src/services/binanceOrderService.ts",
+    "frontend/src/services/binancePositionService.ts",
+    "frontend/src/services/binanceProxyService.ts",
+    "frontend/src/types/adjustment.ts",
+    "frontend/src/types/aiTrade.ts",
+    "frontend/src/types/binanceApi.ts",
+    "frontend/src/types/calculator.ts",
+    "frontend/src/types/exposure.ts",
+    "frontend/src/types/position.ts",
+    "frontend/src/types/prediction.ts",
+    "frontend/src/types/recovery.ts",
+    "frontend/src/types/reversal.ts",
+    "frontend/src/types/scenario.ts",
+    "frontend/src/types/sentiment.ts",
+    "frontend/src/types/tradeHistory.ts",
+    "frontend/src/utils/adjustmentSuggestions.ts",
+    "frontend/src/utils/aiTradeHistoryStorage.ts",
+    "frontend/src/utils/aiTradeSelection.ts",
+    "frontend/src/utils/binanceAuth.ts",
+    "frontend/src/utils/credentialsStorage.ts",
+    "frontend/src/utils/exposureCalculations.ts",
+    "frontend/src/utils/liveTradingStorage.ts",
+    "frontend/src/utils/marketReversalDetector.ts",
+    "frontend/src/utils/performanceCalculations.ts",
+    "frontend/src/utils/pnlCalculations.ts",
+    "frontend/src/utils/positionRecoveryEngine.ts",
+    "frontend/src/utils/positionSizeCalculator.ts",
+    "frontend/src/utils/registerServiceWorker.ts",
+    "frontend/src/utils/scenarioSimulator.ts",
+    "frontend/src/utils/sentimentAnalysis.ts",
+    "frontend/src/utils/stopLossCalculator.ts",
+    "frontend/src/utils/takeProfitCalculator.ts",
+    "frontend/src/utils/technicalAnalysis.ts",
+    "frontend/src/utils/totalCapitalStorage.ts",
+    "frontend/src/utils/tradeHistoryStorage.ts",
+    "frontend/src/utils/trendPrediction.ts",
+    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -71,12 +71,13 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Space Grotesk', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       boxShadow: {
-        'golden-glow': '0 0 20px oklch(0.75 0.15 75 / 0.3)',
-        'golden-glow-lg': '0 0 40px oklch(0.75 0.15 75 / 0.4)',
+        'golden-glow': '0 0 20px oklch(0.78 0.16 75 / 0.25)',
+        'golden-glow-lg': '0 0 40px oklch(0.78 0.16 75 / 0.35)',
+        'card-glow': '0 4px 24px oklch(0.10 0.015 250 / 0.6)',
       },
       keyframes: {
         'accordion-down': {
@@ -87,10 +88,15 @@ export default {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        'pulse-gold': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.5' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'pulse-gold': 'pulse-gold 2s ease-in-out infinite',
       },
     },
   },

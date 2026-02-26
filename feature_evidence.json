@@ -2,39 +2,142 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-ai-daily-trades-p-l-calculation-in-aidailytradessection-tsx-so-that-the-live-current-price-fetched-from-https-fapi-binance-com-fapi-v1-ticker-price-is-reliably-obtained-before-any-pnl-calculation-runs-audit-the-polling-mechanism-inside-aidailytradessection-ensure-the-price-fetch-completes-and-returns-a-non-zero-non-undefined-value-before-buildng-the-enriched-trade-objects-passed-to-aitradecard-if-the-price-is-still-loading-0-or-undefined-pass-a-loading-flag-to-aitradecard-instead-of-a-zero-price-so-pnl-is-not-computed-with-an-invalid-baseline",
-      "featureTitle": "Fix the AI Daily Trades P&L calculation in AIDailyTradesSection.tsx so that the live current price fetched from https://fapi.binance.com/fapi/v1/ticker/price is reliably obtained before any PnL calculation runs. Audit the polling mechanism inside AIDailyTradesSection: ensure the price fetch completes and returns a non-zero, non-undefined value before buildng the enriched trade objects passed to AITradeCard. If the price is still loading (0 or undefined), pass a loading flag to AITradeCard instead of a zero price so PnL is not computed with an invalid baseline.",
+      "featureId": "feature-build-the-complete-react-typescript-frontend-from-scratch-with-a-minimal-focused-scope-the-application-must-have-exactly-three-views-accessible-via-a-tab-navigation-bar-1-dashboard-tab-displays-open-positions-imported-from-binance-with-real-time-pnl-polled-every-5-seconds-from-https-fapi-binance-com-fapi-v1-ticker-price-2-order-terminal-tab-a-form-to-place-new-orders-market-limit-stop-market-take-profit-market-for-any-binance-usd-m-futures-perpetual-pair-selected-from-a-dropdown-populated-via-https-fapi-binance-com-fapi-v1-exchangeinfo-3-settings-tab-binance-api-key-and-secret-input-fields-secret-masked-save-clear-buttons-a-test-connection-button-that-calls-https-fapi-binance-com-fapi-v2-account-via-the-motoko-proxy-and-a-live-trading-mode-toggle-all-localstorage-keys-from-the-previous-version-must-be-ignored-start-with-no-persisted-data-assumptions",
+      "featureTitle": "Build the complete React + TypeScript frontend from scratch with a minimal, focused scope. The application must have exactly three views accessible via a tab navigation bar: (1) Dashboard tab — displays open positions imported from Binance with real-time PnL (polled every 5 seconds from https://fapi.binance.com/fapi/v1/ticker/price); (2) Order Terminal tab — a form to place new orders (Market, Limit, Stop Market, Take Profit Market) for any Binance USD-M Futures perpetual pair selected from a dropdown populated via https://fapi.binance.com/fapi/v1/exchangeInfo; (3) Settings tab — Binance API Key and Secret input fields (secret masked), Save/Clear buttons, a Test Connection button that calls https://fapi.binance.com/fapi/v2/account via the Motoko proxy, and a Live Trading mode toggle. All localStorage keys from the previous version must be ignored — start with no persisted data assumptions.",
       "files": [
-        "frontend/src/components/AIDailyTradesSection.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/components/TabNavigation.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
       ],
       "testIds": [
-        "REQ-133"
+        "REQ-139"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-aitradecard-tsx-so-that-it-guards-against-a-zero-or-undefined-currentprice-before-calling-the-pnl-calculation-inside-the-card-check-that-currentprice-is-a-finite-number-greater-than-zero-before-invoking-calculatepnl-or-the-equivalent-function-from-pnlcalculations-ts-when-currentprice-is-not-yet-available-display-a-loading-indicator-e-g-a-spinner-or-in-the-pnl-display-area-when-currentprice-is-valid-display-the-computed-pnl-in-usd-and-percentage-with-correct-color-coding-green-for-profit-red-for-loss",
-      "featureTitle": "Fix AITradeCard.tsx so that it guards against a zero or undefined currentPrice before calling the PnL calculation. Inside the card, check that currentPrice is a finite number greater than zero before invoking calculatePnl (or the equivalent function from pnlCalculations.ts). When currentPrice is not yet available, display a loading indicator (e.g., a spinner or '…') in the PnL display area. When currentPrice is valid, display the computed PnL in USD and percentage with correct color coding (green for profit, red for loss).",
+      "featureId": "feature-create-a-frontend-service-module-frontend-src-services-binanceproxyservice-ts-that-calls-the-motoko-backend-canister-actor-via-the-useactor-hook-instead-of-making-direct-authenticated-fetch-calls-to-binance-expose-the-same-function-signatures-as-the-previous-binanceorderservice-ts-placemarketorder-placelimitorder-placestopmarketorder-placetakeprofitmarketorder-and-cancelorder-each-function-must-retrieve-the-stored-api-key-and-secret-from-localstorage-keys-binance-api-key-and-binance-api-secret-pass-them-as-parameters-to-the-corresponding-canister-method-and-return-the-parsed-json-response-or-throw-a-typed-error-if-credentials-are-missing-throw-a-descriptive-error-before-invoking-the-canister",
+      "featureTitle": "Create a frontend service module (frontend/src/services/binanceProxyService.ts) that calls the Motoko backend canister actor (via the useActor hook) instead of making direct authenticated fetch calls to Binance. Expose the same function signatures as the previous binanceOrderService.ts: placeMarketOrder, placeLimitOrder, placeStopMarketOrder, placeTakeProfitMarketOrder, and cancelOrder. Each function must retrieve the stored API Key and Secret from localStorage (keys: 'binance_api_key' and 'binance_api_secret'), pass them as parameters to the corresponding canister method, and return the parsed JSON response or throw a typed error. If credentials are missing, throw a descriptive error before invoking the canister.",
       "files": [
-        "frontend/src/components/AIDailyTradesSummary.tsx",
-        "frontend/src/components/AITradeCard.tsx"
+        "frontend/src/services/binanceProxyService.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
       ],
       "testIds": [
-        "REQ-134"
+        "REQ-140"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-a-credentials-utility-module-frontend-src-utils-credentialsstorage-ts-that-manages-binance-api-credentials-in-localstorage-expose-1-savecredentials-apikey-string-apisecret-string-saves-both-values-under-keys-binance-api-key-and-binance-api-secret-and-dispatches-a-custom-dom-event-credential-change-2-getcredentials-returns-apikey-apisecret-from-localstorage-3-clearcredentials-removes-both-keys-and-dispatches-credential-change-4-hascredentials-returns-true-only-if-both-keys-are-present-and-non-empty-the-credential-change-event-must-be-dispatched-synchronously-after-every-write-so-dependent-components-update-reactively-without-a-page-reload",
+      "featureTitle": "Create a credentials utility module (frontend/src/utils/credentialsStorage.ts) that manages Binance API credentials in localStorage. Expose: (1) saveCredentials(apiKey: string, apiSecret: string) — saves both values under keys 'binance_api_key' and 'binance_api_secret' and dispatches a custom DOM event 'credential-change'; (2) getCredentials() — returns { apiKey, apiSecret } from localStorage; (3) clearCredentials() — removes both keys and dispatches 'credential-change'; (4) hasCredentials() — returns true only if both keys are present and non-empty. The 'credential-change' event must be dispatched synchronously after every write so dependent components update reactively without a page reload.",
+      "files": [
+        "frontend/src/utils/credentialsStorage.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-141"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-the-order-terminal-tab-frontend-src-components-orderterminaltab-tsx-as-the-primary-order-placement-interface-the-tab-must-contain-1-an-asset-selector-dropdown-autocomplete-populated-with-all-perpetual-pairs-from-https-fapi-binance-com-fapi-v1-exchangeinfo-filtered-by-contracttype-perpetual-with-a-loading-state-while-fetching-and-an-error-message-on-failure-2-a-live-current-price-display-for-the-selected-symbol-fetched-from-https-fapi-binance-com-fapi-v1-ticker-price-refreshed-every-5-seconds-3-order-type-selector-market-limit-stop-market-take-profit-market-4-side-selector-buy-long-sell-short-5-quantity-input-numeric-required-6-price-input-shown-only-for-limit-orders-7-stop-price-input-shown-for-stop-market-and-take-profit-market-orders-8-a-place-order-button-that-is-disabled-when-live-trading-mode-is-off-show-a-tooltip-enable-live-trading-in-settings-to-place-real-orders-9-when-live-trading-mode-is-on-and-credentials-are-present-clicking-place-order-calls-the-appropriate-function-from-binanceproxyservice-ts-shows-a-loading-state-on-the-button-and-displays-a-success-toast-with-the-order-id-or-an-error-toast-on-failure-all-order-calls-must-be-wrapped-in-try-catch-with-a-15-second-timeout",
+      "featureTitle": "Implement the Order Terminal tab (frontend/src/components/OrderTerminalTab.tsx) as the primary order placement interface. The tab must contain: (1) an asset selector dropdown/autocomplete populated with all perpetual pairs from https://fapi.binance.com/fapi/v1/exchangeInfo filtered by contractType === 'PERPETUAL', with a loading state while fetching and an error message on failure; (2) a live current price display for the selected symbol fetched from https://fapi.binance.com/fapi/v1/ticker/price, refreshed every 5 seconds; (3) order type selector: Market, Limit, Stop Market, Take Profit Market; (4) side selector: Buy (Long) / Sell (Short); (5) quantity input (numeric, required); (6) price input (shown only for Limit orders); (7) stop price input (shown for Stop Market and Take Profit Market orders); (8) a 'Place Order' button that is disabled when Live Trading mode is OFF — show a tooltip 'Enable Live Trading in Settings to place real orders'; (9) when Live Trading mode is ON and credentials are present, clicking 'Place Order' calls the appropriate function from binanceProxyService.ts, shows a loading state on the button, and displays a success toast with the order ID or an error toast on failure. All order calls must be wrapped in try/catch with a 15-second timeout.",
+      "files": [
+        "frontend/src/components/OrderTerminalTab.tsx",
+        "frontend/src/hooks/useBinancePairs.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-142"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-the-dashboard-tab-frontend-src-components-dashboardtab-tsx-that-displays-the-user-s-open-positions-imported-from-binance-the-tab-must-include-1-an-import-positions-button-visible-only-when-hascredentials-returns-true-that-calls-https-fapi-binance-com-fapi-v2-positionrisk-via-the-motoko-proxy-canister-filters-for-entries-where-positionamt-is-non-zero-maps-them-to-a-simple-local-position-type-symbol-side-as-long-short-based-on-positionamt-sign-entryprice-quantity-leverage-and-stores-them-in-localstorage-under-positions-2-a-position-list-that-renders-each-position-as-a-card-showing-symbol-side-badge-green-for-long-red-for-short-entry-price-quantity-leverage-current-price-fetched-from-https-fapi-binance-com-fapi-v1-ticker-price-and-unrealized-pnl-in-usd-and-percentage-updated-every-5-seconds-3-an-onboarding-banner-when-hascredentials-returns-false-instructing-the-user-to-go-to-settings-and-enter-their-api-credentials-4-a-remove-button-on-each-position-card-to-delete-it-from-the-local-list-live-prices-must-be-fetched-directly-from-the-browser-public-endpoint-no-proxy-needed-only-authenticated-calls-go-through-the-motoko-proxy",
+      "featureTitle": "Implement the Dashboard tab (frontend/src/components/DashboardTab.tsx) that displays the user's open positions imported from Binance. The tab must include: (1) an 'Import Positions' button — visible only when hasCredentials() returns true — that calls https://fapi.binance.com/fapi/v2/positionRisk via the Motoko proxy canister, filters for entries where positionAmt is non-zero, maps them to a simple local Position type (symbol, side as Long/Short based on positionAmt sign, entryPrice, quantity, leverage), and stores them in localStorage under 'positions'; (2) a position list that renders each position as a card showing symbol, side badge (green for Long, red for Short), entry price, quantity, leverage, current price fetched from https://fapi.binance.com/fapi/v1/ticker/price, and unrealized PnL in USD and percentage — updated every 5 seconds; (3) an onboarding banner when hasCredentials() returns false instructing the user to go to Settings and enter their API credentials; (4) a 'Remove' button on each position card to delete it from the local list. Live prices must be fetched directly from the browser (public endpoint, no proxy needed) — only authenticated calls go through the Motoko proxy.",
+      "files": [
+        "frontend/src/components/DashboardTab.tsx",
+        "frontend/src/types/position.ts",
+        "frontend/src/utils/pnlCalculations.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-143"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-the-settings-tab-frontend-src-components-settingstab-tsx-with-three-sections-1-api-credentials-text-input-for-api-key-password-type-input-for-api-secret-a-save-button-that-calls-savecredentials-and-shows-a-success-toast-a-clear-button-that-calls-clearcredentials-and-a-warning-notice-your-api-keys-are-stored-locally-in-your-browser-and-are-only-sent-to-the-internet-computer-canister-for-signing-never-to-any-third-party-server-2-connection-test-a-test-connection-button-that-calls-the-motoko-proxy-canister-s-account-endpoint-https-fapi-binance-com-fapi-v2-account-with-the-stored-credentials-shows-a-connected-badge-on-success-or-invalid-credentials-on-failure-uses-a-15-second-timeout-and-never-leaves-the-ui-in-a-frozen-loading-state-always-resets-loading-state-in-a-finally-block-3-live-trading-mode-a-toggle-switch-labeled-live-trading-defaulting-to-off-stored-in-localstorage-under-live-trading-enabled-with-a-confirmation-dialog-before-enabling-warning-enabling-this-will-send-real-orders-to-binance-futures-and-an-amber-banner-visible-in-the-app-header-whenever-live-trading-is-active",
+      "featureTitle": "Implement the Settings tab (frontend/src/components/SettingsTab.tsx) with three sections: (1) API Credentials — text input for API Key, password-type input for API Secret, a 'Save' button that calls saveCredentials() and shows a success toast, a 'Clear' button that calls clearCredentials(), and a warning notice 'Your API keys are stored locally in your browser and are only sent to the Internet Computer canister for signing — never to any third-party server'; (2) Connection Test — a 'Test Connection' button that calls the Motoko proxy canister's account endpoint (https://fapi.binance.com/fapi/v2/account) with the stored credentials, shows a 'Connected ✓' badge on success or 'Invalid credentials ✗' on failure, uses a 15-second timeout, and never leaves the UI in a frozen loading state (always resets loading state in a finally block); (3) Live Trading Mode — a toggle switch labeled 'Live Trading', defaulting to OFF, stored in localStorage under 'live_trading_enabled', with a confirmation dialog before enabling ('Warning: enabling this will send real orders to Binance Futures') and an amber banner visible in the app header whenever Live Trading is active.",
+      "files": [
+        "frontend/src/components/LiveTradingBanner.tsx",
+        "frontend/src/components/SettingsTab.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-144"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-design-the-application-with-a-dark-professional-trading-terminal-aesthetic-using-tailwind-css-use-a-near-black-background-0a0a0f-or-equivalent-gold-amber-accent-colors-consistent-with-oklch-css-variables-for-interactive-elements-buttons-and-badges-and-green-red-color-coding-exclusively-for-profit-loss-indicators-the-header-must-display-the-app-name-binance-order-terminal-a-credential-status-indicator-api-connected-in-green-or-no-api-key-in-amber-a-live-trading-mode-amber-badge-when-active-and-the-tab-navigation-bar-the-layout-must-be-responsive-and-work-on-both-desktop-and-mobile-screens-typography-must-be-clean-and-readable-use-a-monospace-or-semi-monospace-font-for-price-and-numeric-data",
+      "featureTitle": "Design the application with a dark, professional trading terminal aesthetic using Tailwind CSS. Use a near-black background (#0a0a0f or equivalent), gold/amber accent colors (consistent with oklch CSS variables) for interactive elements, buttons, and badges, and green/red color coding exclusively for profit/loss indicators. The header must display the app name 'Binance Order Terminal', a credential status indicator ('API Connected' in green or 'No API Key' in amber), a live trading mode amber badge when active, and the tab navigation bar. The layout must be responsive and work on both desktop and mobile screens. Typography must be clean and readable — use a monospace or semi-monospace font for price and numeric data.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/CredentialStatusIndicator.tsx",
+        "frontend/src/index.css"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-145"
       ],
       "confidence": "high"
     }

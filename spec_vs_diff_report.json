@@ -1,26 +1,187 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T08:35:58.717Z",
-  "summary": "The diff modifies AIDailyTradesSection.tsx, AIDailyTradesSummary.tsx, and AITradeCard.tsx to address REQ-133 and REQ-134. REQ-133 is largely addressed: prices are fetched via fetchCurrentPrices before building enriched trade objects, a pricesLoading flag is used, and polling appears to be implemented. REQ-134 is partially addressed in AITradeCard.tsx with a priceLoading prop and guards, and AIDailyTradesSummary correctly filters trades with valid prices. However, REQ-135 (deduplication in useAITradeGeneration.ts and useAITradeStorage.ts) shows no evidence of changes in the diff.",
+  "generatedAt": "2026-02-26T13:47:03.590Z",
+  "summary": "The diff implements the core requirements for rebuilding the app from scratch with a Motoko proxy for Binance order execution. Most requirements are substantially addressed: the Motoko backend canister (REQ-138), frontend structure with three tabs (REQ-139), binanceProxyService.ts (REQ-140), credentialsStorage.ts (REQ-141), OrderTerminalTab (REQ-142), DashboardTab (REQ-143), SettingsTab (REQ-144), and the dark terminal aesthetic (REQ-145) are all present. However, several specific acceptance criteria have issues or gaps, and one constraint violation is evident.",
   "missing_requirements": [
     {
-      "id": "REQ-135",
-      "requirement": "Fix the duplicate 'Day Trading' modality card by auditing useAITradeGeneration.ts and useAITradeStorage.ts to ensure exactly four unique modality trades are stored and rendered. Add deduplication guard in storage write path and remove duplicate localStorage entries on load.",
-      "reason": "The diff does not show any modifications to useAITradeGeneration.ts or useAITradeStorage.ts. No deduplication logic or guard against duplicate modality entries in the storage write path is evidenced in the changed files.",
+      "id": "REQ-138",
+      "requirement": "cancelOrder must forward a DELETE to https://fapi.binance.com/fapi/v1/order. The Motoko canister's executeHttpDeleteWithRetryWithToken helper internally calls OutCall.httpPostRequest instead of an HTTP DELETE method.",
+      "reason": "The diff shows executeHttpDeleteWithRetryWithToken calls OutCall.httpPostRequest rather than a DELETE-specific outcall function, so the cancelOrder method does not correctly issue an HTTP DELETE to Binance.",
       "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-138",
+      "requirement": "Each method must compute the HMAC-SHA256 signature over the full query string using the provided apiSecret. The placeMarketOrder signature in the diff shows apiSecret as '_apiSecret' (underscore prefix indicating unused), suggesting the signature computation may not be implemented using the passed secret.",
+      "reason": "The truncated backend/main.mo shows the parameter named '_apiSecret' with an underscore prefix indicating it is unused, meaning HMAC-SHA256 signing with the provided secret may be missing.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-139",
+      "requirement": "No references to the previous application's complex features exist in the codebase. Several old component files are still present: AIDailyTradesTab, AIInsightsTab, PortfolioExposureDashboard, PerformanceComparisonPanel, ExposureChart, etc.",
+      "reason": "The diff shows these legacy component files as modified (not removed), meaning they still exist in the codebase and violate the no-carry-over constraint.",
+      "evidence": [
+        "frontend/src/components/AIDailyTradesTab.tsx",
+        "frontend/src/components/AIInsightsTab.tsx",
         "frontend/src/components/AIDailyTradesSection.tsx",
-        "frontend-file-summaries.txt"
+        "frontend/src/components/AIDailyTradesSummary.tsx",
+        "frontend/src/components/AITradeCard.tsx",
+        "frontend/src/components/AdjustmentSuggestionCard.tsx",
+        "frontend/src/components/BinanceCredentialsPanel.tsx",
+        "frontend/src/components/ExposureChart.tsx",
+        "frontend/src/components/InstallButton.tsx",
+        "frontend/src/components/InstallInstructionsModal.tsx",
+        "frontend/src/components/LiveRiskMetricsCard.tsx",
+        "frontend/src/components/LiveTradingToggle.tsx",
+        "frontend/src/components/PerformanceComparisonPanel.tsx",
+        "frontend/src/components/PortfolioExposureDashboard.tsx",
+        "frontend/src/components/PositionCard.tsx"
+      ]
+    },
+    {
+      "id": "REQ-143",
+      "requirement": "Import Positions must call https://fapi.binance.com/fapi/v2/positionRisk via the Motoko proxy canister.",
+      "reason": "The DashboardTab.tsx comment explicitly states 'For now, we fetch via the browser using the stored credentials' for positionRisk, directly violating the requirement that authenticated Binance calls go through the Motoko proxy canister.",
+      "evidence": [
+        "frontend/src/components/DashboardTab.tsx"
+      ]
+    },
+    {
+      "id": "REQ-143",
+      "requirement": "Positions must be stored in localStorage under the key 'positions'. The DashboardTab.tsx uses the key 'bot_positions' instead.",
+      "reason": "The POSITIONS_KEY constant in DashboardTab.tsx is set to 'bot_positions', not 'positions' as specified in REQ-143.",
+      "evidence": [
+        "frontend/src/components/DashboardTab.tsx"
+      ]
+    },
+    {
+      "id": "REQ-144",
+      "requirement": "Test Connection button must call the Motoko proxy canister's account endpoint rather than making a direct authenticated fetch from the browser.",
+      "reason": "SettingsTab.tsx performs the account test connection using browser-side HMAC signing via SubtleCrypto and a direct fetch to fapi.binance.com/fapi/v2/account, bypassing the Motoko proxy canister entirely.",
+      "evidence": [
+        "frontend/src/components/SettingsTab.tsx"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.78,
+  "hallucinated_features": [
+    {
+      "description": "The backend canister exposes a public 'now()' update method that returns the current timestamp as Nat64, which was not requested in any requirement.",
+      "reason": "REQ-138 only specifies placeMarketOrder, placeLimitOrder, placeStopMarketOrder, placeTakeProfitMarketOrder, and cancelOrder as public methods. The 'now()' method is an extra callable method not in scope.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "description": "The binanceProxyService.ts accesses the actor via a global window.__binanceActor property instead of using the useActor hook as specified in REQ-140.",
+      "reason": "REQ-140 specifies that the service calls the canister actor via the useActor hook. The implementation uses a global window property pattern instead, which is an architectural deviation not requested.",
+      "evidence": [
+        "frontend/src/services/binanceProxyService.ts"
+      ]
+    },
+    {
+      "description": "SettingsTab implements browser-side HMAC-SHA256 signing using SubtleCrypto for the Test Connection flow, making an authenticated Binance call directly from the browser.",
+      "reason": "The constraint states authenticated Binance calls must go through the Motoko proxy canister, never directly from the browser. The SubtleCrypto signing and direct fetch in SettingsTab is an unrequested bypass pattern.",
+      "evidence": [
+        "frontend/src/components/SettingsTab.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.72,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
     "frontend/src/components/AIDailyTradesSection.tsx",
     "frontend/src/components/AIDailyTradesSummary.tsx",
+    "frontend/src/components/AIDailyTradesTab.tsx",
+    "frontend/src/components/AIInsightsTab.tsx",
     "frontend/src/components/AITradeCard.tsx",
+    "frontend/src/components/AdjustmentSuggestionCard.tsx",
+    "frontend/src/components/BinanceCredentialsPanel.tsx",
+    "frontend/src/components/CredentialStatusIndicator.tsx",
+    "frontend/src/components/DashboardTab.tsx",
+    "frontend/src/components/ExposureChart.tsx",
+    "frontend/src/components/InstallButton.tsx",
+    "frontend/src/components/InstallInstructionsModal.tsx",
+    "frontend/src/components/LiveRiskMetricsCard.tsx",
+    "frontend/src/components/LiveTradingBanner.tsx",
+    "frontend/src/components/LiveTradingToggle.tsx",
+    "frontend/src/components/OrderTerminalTab.tsx",
+    "frontend/src/components/PerformanceComparisonPanel.tsx",
+    "frontend/src/components/PortfolioExposureDashboard.tsx",
+    "frontend/src/components/PositionCard.tsx",
+    "frontend/src/components/PositionDashboard.tsx",
+    "frontend/src/components/PositionEntryForm.tsx",
+    "frontend/src/components/PositionRecoveryCard.tsx",
+    "frontend/src/components/PositionSizeCalculator.tsx",
+    "frontend/src/components/RiskManagementTab.tsx",
+    "frontend/src/components/ScenarioSimulator.tsx",
+    "frontend/src/components/SentimentGauge.tsx",
+    "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/components/SettingsTab.tsx",
+    "frontend/src/components/StopLossRecommendations.tsx",
+    "frontend/src/components/TabNavigation.tsx",
+    "frontend/src/components/TakeProfitRecommendations.tsx",
+    "frontend/src/components/TotalCapitalInput.tsx",
+    "frontend/src/components/TotalCapitalSummary.tsx",
+    "frontend/src/components/TradeOutcomeModal.tsx",
+    "frontend/src/components/TrendPredictionCard.tsx",
+    "frontend/src/hooks/useAITradeGeneration.ts",
+    "frontend/src/hooks/useAITradeMonitoring.ts",
+    "frontend/src/hooks/useAITradeStorage.ts",
+    "frontend/src/hooks/useAdjustmentSuggestions.ts",
+    "frontend/src/hooks/useBinancePairs.ts",
+    "frontend/src/hooks/useLiveTradingMode.ts",
+    "frontend/src/hooks/usePWAInstall.ts",
+    "frontend/src/hooks/usePortfolioExposure.ts",
+    "frontend/src/hooks/usePositionMonitoring.ts",
+    "frontend/src/hooks/usePositionStorage.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/hooks/useSentimentAnalysis.ts",
+    "frontend/src/hooks/useTrendPrediction.ts",
+    "frontend/src/index.css",
+    "frontend/src/services/binanceApi.ts",
+    "frontend/src/services/binanceOrderService.ts",
+    "frontend/src/services/binancePositionService.ts",
+    "frontend/src/services/binanceProxyService.ts",
+    "frontend/src/types/adjustment.ts",
+    "frontend/src/types/aiTrade.ts",
+    "frontend/src/types/binanceApi.ts",
+    "frontend/src/types/calculator.ts",
+    "frontend/src/types/exposure.ts",
+    "frontend/src/types/position.ts",
+    "frontend/src/types/prediction.ts",
+    "frontend/src/types/recovery.ts",
+    "frontend/src/types/reversal.ts",
+    "frontend/src/types/scenario.ts",
+    "frontend/src/types/sentiment.ts",
+    "frontend/src/types/tradeHistory.ts",
+    "frontend/src/utils/adjustmentSuggestions.ts",
+    "frontend/src/utils/aiTradeHistoryStorage.ts",
+    "frontend/src/utils/aiTradeSelection.ts",
+    "frontend/src/utils/binanceAuth.ts",
+    "frontend/src/utils/credentialsStorage.ts",
+    "frontend/src/utils/exposureCalculations.ts",
+    "frontend/src/utils/liveTradingStorage.ts",
+    "frontend/src/utils/marketReversalDetector.ts",
+    "frontend/src/utils/performanceCalculations.ts",
+    "frontend/src/utils/pnlCalculations.ts",
+    "frontend/src/utils/positionRecoveryEngine.ts",
+    "frontend/src/utils/positionSizeCalculator.ts",
+    "frontend/src/utils/registerServiceWorker.ts",
+    "frontend/src/utils/scenarioSimulator.ts",
+    "frontend/src/utils/sentimentAnalysis.ts",
+    "frontend/src/utils/stopLossCalculator.ts",
+    "frontend/src/utils/takeProfitCalculator.ts",
+    "frontend/src/utils/technicalAnalysis.ts",
+    "frontend/src/utils/totalCapitalStorage.ts",
+    "frontend/src/utils/tradeHistoryStorage.ts",
+    "frontend/src/utils/trendPrediction.ts",
+    "frontend/tailwind.config.js",
     "project_state.json"
   ]
 }
